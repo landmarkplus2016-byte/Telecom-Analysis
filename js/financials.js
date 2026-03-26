@@ -242,36 +242,54 @@ window.FinancialsModule = (function () {
     var crMonths = getMonths(_data, 'cashReceivedDate', state.cashRcvYear);
     var crDays   = getDays(_data,   'cashReceivedDate', state.cashRcvYear, state.cashRcvMonth);
 
-    return '<div class="fin-filters">' +
+    return (
+      /* Mobile toggle header */
+      '<button id="fin-filter-toggle" class="dash-filter-toggle">' +
+        '<span class="dash-filter-toggle-label">Filters' +
+          '<span id="fin-filter-badge" class="dash-filter-count" style="display:none"></span>' +
+        '</span>' +
+        '<span class="dash-filter-chevron" id="fin-filter-chevron">&#9660;</span>' +
+      '</button>' +
 
-      /* VF Invoice # */
-      '<div class="fin-filter-group">' +
-        '<label class="field-label">VF Invoice #</label>' +
-        '<input type="text" id="fin-vf-invoice" class="search-input" placeholder="Search invoice #…" value="' + escHtml(state.vfInvoiceNo) + '">' +
-      '</div>' +
+      /* Filter body — hidden on mobile until toggled */
+      '<div id="fin-filters-body" class="dash-filters-body">' +
+        '<div class="fin-filters">' +
 
-      /* VF Invoice Submission Date */
-      '<div class="fin-filter-group">' +
-        '<label class="field-label">VF Invoice Submission Date</label>' +
-        '<div class="date-group">' +
-          buildYearOpts('fin-vs-year',  vsYears,  state.vfSubmitYear)  +
-          buildMonthOpts('fin-vs-month', vsMonths, state.vfSubmitYear,  state.vfSubmitMonth) +
-          buildDayOpts('fin-vs-day',   vsDays,   state.vfSubmitYear,  state.vfSubmitMonth, state.vfSubmitDay) +
+          /* VF Invoice # */
+          '<div class="fin-filter-group">' +
+            '<label class="field-label">VF Invoice #</label>' +
+            '<input type="text" id="fin-vf-invoice" class="search-input" placeholder="Search invoice #…" value="' + escHtml(state.vfInvoiceNo) + '">' +
+          '</div>' +
+
+          /* VF Invoice Submission Date */
+          '<div class="fin-filter-group">' +
+            '<label class="field-label">VF Invoice Submission Date</label>' +
+            '<div class="date-group">' +
+              buildYearOpts('fin-vs-year',  vsYears,  state.vfSubmitYear)  +
+              buildMonthOpts('fin-vs-month', vsMonths, state.vfSubmitYear,  state.vfSubmitMonth) +
+              buildDayOpts('fin-vs-day',   vsDays,   state.vfSubmitYear,  state.vfSubmitMonth, state.vfSubmitDay) +
+            '</div>' +
+          '</div>' +
+
+          /* Cash Received Date */
+          '<div class="fin-filter-group">' +
+            '<label class="field-label">Cash Received Date</label>' +
+            '<div class="date-group">' +
+              buildYearOpts('fin-cr-year',  crYears,  state.cashRcvYear)   +
+              buildMonthOpts('fin-cr-month', crMonths, state.cashRcvYear,   state.cashRcvMonth) +
+              buildDayOpts('fin-cr-day',   crDays,   state.cashRcvYear,   state.cashRcvMonth, state.cashRcvDay) +
+            '</div>' +
+          '</div>' +
+
+          /* Clear */
+          '<div class="fin-filter-group" style="display:flex;align-items:flex-end">' +
+            '<button id="fin-clear-btn" class="btn btn-outline" style="width:100%">Clear</button>' +
+          '</div>' +
+
         '</div>' +
-      '</div>' +
-
-      /* Cash Received Date */
-      '<div class="fin-filter-group">' +
-        '<label class="field-label">Cash Received Date</label>' +
-        '<div class="date-group">' +
-          buildYearOpts('fin-cr-year',  crYears,  state.cashRcvYear)   +
-          buildMonthOpts('fin-cr-month', crMonths, state.cashRcvYear,   state.cashRcvMonth) +
-          buildDayOpts('fin-cr-day',   crDays,   state.cashRcvYear,   state.cashRcvMonth, state.cashRcvDay) +
-        '</div>' +
-      '</div>' +
-
-    '</div>' +
-    '<p id="fin-record-count" class="results-count" style="margin-top:.75rem"></p>';
+        '<p id="fin-record-count" class="results-count" style="margin-top:.75rem"></p>' +
+      '</div>'
+    );
   }
 
   /* ── Select builders ── */
@@ -326,14 +344,40 @@ window.FinancialsModule = (function () {
     sel.disabled  = !(year && month);
   }
 
+  /* ── Active filter count badge ── */
+  function updateFilterBadge() {
+    var badge = document.getElementById('fin-filter-badge');
+    if (!badge) return;
+    var count = 0;
+    if (state.vfInvoiceNo)                                              count++;
+    if (state.vfSubmitYear || state.vfSubmitMonth || state.vfSubmitDay) count++;
+    if (state.cashRcvYear  || state.cashRcvMonth  || state.cashRcvDay)  count++;
+    if (count) {
+      badge.textContent   = count;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
   /* ── Bind events — text input only calls renderResults(), never render() ── */
   function bindFilterEvents() {
+
+    /* Mobile toggle */
+    var toggleBtn = document.getElementById('fin-filter-toggle');
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      var body    = document.getElementById('fin-filters-body');
+      var chevron = document.getElementById('fin-filter-chevron');
+      if (!body) return;
+      var open = body.classList.toggle('open');
+      if (chevron) chevron.classList.toggle('open', open);
+    });
 
     /* VF Invoice # — partial render only → no focus loss */
     var inv = document.getElementById('fin-vf-invoice');
     if (inv) inv.addEventListener('input', function (e) {
       state.vfInvoiceNo = e.target.value;
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
 
     /* VF Invoice Submission Date */
@@ -347,17 +391,17 @@ window.FinancialsModule = (function () {
       state.vfSubmitDay   = '';
       refreshMonthSelect('fin-vs-month', 'vfInvoiceSubmissionDate', state.vfSubmitYear);
       refreshDaySelect('fin-vs-day',   'vfInvoiceSubmissionDate', state.vfSubmitYear, '');
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (vsMonth) vsMonth.addEventListener('change', function (e) {
       state.vfSubmitMonth = e.target.value;
       state.vfSubmitDay   = '';
       refreshDaySelect('fin-vs-day', 'vfInvoiceSubmissionDate', state.vfSubmitYear, state.vfSubmitMonth);
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (vsDay) vsDay.addEventListener('change', function (e) {
       state.vfSubmitDay = e.target.value;
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
 
     /* Cash Received Date */
@@ -371,17 +415,26 @@ window.FinancialsModule = (function () {
       state.cashRcvDay   = '';
       refreshMonthSelect('fin-cr-month', 'cashReceivedDate', state.cashRcvYear);
       refreshDaySelect('fin-cr-day',   'cashReceivedDate', state.cashRcvYear, '');
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (crMonth) crMonth.addEventListener('change', function (e) {
       state.cashRcvMonth = e.target.value;
       state.cashRcvDay   = '';
       refreshDaySelect('fin-cr-day', 'cashReceivedDate', state.cashRcvYear, state.cashRcvMonth);
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (crDay) crDay.addEventListener('change', function (e) {
       state.cashRcvDay = e.target.value;
-      renderResults();
+      updateFilterBadge(); renderResults();
+    });
+
+    /* Clear */
+    var clearBtn = document.getElementById('fin-clear-btn');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      state.vfInvoiceNo  = '';
+      state.vfSubmitYear  = ''; state.vfSubmitMonth  = ''; state.vfSubmitDay  = '';
+      state.cashRcvYear   = ''; state.cashRcvMonth   = ''; state.cashRcvDay   = '';
+      render();
     });
   }
 
