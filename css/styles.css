@@ -439,6 +439,55 @@ input, select, textarea { font-family: inherit; }
 
 .fin-filter-group { flex: 1; min-width: 200px; }
 
+/* ── Dashboard filter collapse (mobile) ── */
+.dash-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.dash-filter-toggle-label {
+  font-size: .9rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.dash-filter-count {
+  display: inline-flex;
+  align-items: center;
+  padding: .1rem .45rem;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+}
+.dash-filter-chevron {
+  font-size: .7rem;
+  color: var(--muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.dash-filter-chevron.open { transform: rotate(180deg); }
+
+.dash-filters-body { margin-top: 1rem; }
+
+@media (max-width: 767px) {
+  .dash-filters-body          { display: none; }
+  .dash-filters-body.open     { display: block; }
+}
+@media (min-width: 768px) {
+  .dash-filter-toggle         { display: none; }
+  .dash-filters-body          { display: block !important; margin-top: 0; }
+}
+
 .date-group { display: flex; gap: .4rem; }
 
 .date-select {

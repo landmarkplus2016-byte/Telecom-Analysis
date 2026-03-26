@@ -92,22 +92,34 @@ window.PWAModule = (function () {
     ensureIcons();
   }
 
-  /* ── Pre-generate icons and store as object URLs for SW cache ── */
+  /* ── Pre-generate icons via canvas — update existing link tags in-place ── */
   function ensureIcons() {
     Promise.all([
       generateIcon(192, 'icon-192.png'),
       generateIcon(512, 'icon-512.png')
     ]).then(function (results) {
       results.forEach(function (r) {
-        // Store blob URL so SW can cache on next visit if files don't exist on server
         var url = URL.createObjectURL(r.blob);
-        // Prefetch — if server returns 404, link[rel=icon] still works from blob
-        var link = document.querySelector('link[rel="apple-touch-icon"]');
-        if (!link && r.size === 192) {
-          link = document.createElement('link');
-          link.rel = 'apple-touch-icon';
-          link.href = url;
-          document.head.appendChild(link);
+
+        if (r.size === 192) {
+          var favicon = document.querySelector('link[rel="icon"]');
+          if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel  = 'icon';
+            favicon.type = 'image/png';
+            document.head.appendChild(favicon);
+          }
+          favicon.href = url;
+        }
+
+        if (r.size === 512) {
+          var atIcon = document.querySelector('link[rel="apple-touch-icon"]');
+          if (!atIcon) {
+            atIcon = document.createElement('link');
+            atIcon.rel = 'apple-touch-icon';
+            document.head.appendChild(atIcon);
+          }
+          atIcon.href = url;
         }
       });
     }).catch(function () {});

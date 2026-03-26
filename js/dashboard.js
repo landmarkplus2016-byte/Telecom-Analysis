@@ -271,46 +271,59 @@ window.Dashboard = (function () {
       '<div class="section-header"><h2>Dashboard</h2></div>' +
 
       '<div class="card" style="margin-bottom:1.25rem">' +
-        '<div class="fin-filters">' +
 
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Status</label>' +
-            buildDropdown('db-status', statuses, state.status, 'All Status') +
-          '</div>' +
+        /* Mobile toggle header */
+        '<button id="db-filter-toggle" class="dash-filter-toggle">' +
+          '<span class="dash-filter-toggle-label">Filters' +
+            '<span id="db-filter-badge" class="dash-filter-count" style="display:none"></span>' +
+          '</span>' +
+          '<span class="dash-filter-chevron" id="db-filter-chevron">&#9660;</span>' +
+        '</button>' +
 
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Task Date</label>' +
-            '<div class="date-group">' +
-              buildYearOpts( 'db-td-year',  'taskDate', state.taskYear) +
-              buildMonthOpts('db-td-month', 'taskDate', state.taskYear,  state.taskMonth) +
-              buildDayOpts(  'db-td-day',   'taskDate', state.taskYear,  state.taskMonth, state.taskDay) +
+        /* Filter body — hidden on mobile until toggled */
+        '<div id="db-filters-body" class="dash-filters-body">' +
+          '<div class="fin-filters">' +
+
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Status</label>' +
+              buildDropdown('db-status', statuses, state.status, 'All Status') +
             '</div>' +
-          '</div>' +
 
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Contractor</label>' +
-            buildDropdown('db-contractor', contractors, state.contractor, 'All Contractors') +
-          '</div>' +
-
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Acceptance Status</label>' +
-            buildDropdown('db-acc-status', accStatuses, state.acceptanceStatus, 'All') +
-          '</div>' +
-
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">FAC Date</label>' +
-            '<div class="date-group">' +
-              buildYearOpts( 'db-fd-year',  'facDate', state.facYear) +
-              buildMonthOpts('db-fd-month', 'facDate', state.facYear,  state.facMonth) +
-              buildDayOpts(  'db-fd-day',   'facDate', state.facYear,  state.facMonth, state.facDay) +
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Task Date</label>' +
+              '<div class="date-group">' +
+                buildYearOpts( 'db-td-year',  'taskDate', state.taskYear) +
+                buildMonthOpts('db-td-month', 'taskDate', state.taskYear,  state.taskMonth) +
+                buildDayOpts(  'db-td-day',   'taskDate', state.taskYear,  state.taskMonth, state.taskDay) +
+              '</div>' +
             '</div>' +
-          '</div>' +
 
-          '<div class="fin-filter-group" style="display:flex;align-items:flex-end">' +
-            '<button id="db-clear-btn" class="btn btn-outline" style="width:100%">Clear</button>' +
-          '</div>' +
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Contractor</label>' +
+              buildDropdown('db-contractor', contractors, state.contractor, 'All Contractors') +
+            '</div>' +
 
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Acceptance Status</label>' +
+              buildDropdown('db-acc-status', accStatuses, state.acceptanceStatus, 'All') +
+            '</div>' +
+
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">FAC Date</label>' +
+              '<div class="date-group">' +
+                buildYearOpts( 'db-fd-year',  'facDate', state.facYear) +
+                buildMonthOpts('db-fd-month', 'facDate', state.facYear,  state.facMonth) +
+                buildDayOpts(  'db-fd-day',   'facDate', state.facYear,  state.facMonth, state.facDay) +
+              '</div>' +
+            '</div>' +
+
+            '<div class="fin-filter-group" style="display:flex;align-items:flex-end">' +
+              '<button id="db-clear-btn" class="btn btn-outline" style="width:100%">Clear</button>' +
+            '</div>' +
+
+          '</div>' +
         '</div>' +
+
       '</div>' +
 
       '<div id="dash-results"></div>';
@@ -319,12 +332,40 @@ window.Dashboard = (function () {
     bindEvents();
   }
 
+  /* ── Active filter count badge ── */
+  function updateFilterBadge() {
+    var badge   = document.getElementById('db-filter-badge');
+    if (!badge) return;
+    var count = 0;
+    if (state.status)                                        count++;
+    if (state.taskYear || state.taskMonth || state.taskDay)  count++;
+    if (state.contractor)                                    count++;
+    if (state.acceptanceStatus)                              count++;
+    if (state.facYear || state.facMonth || state.facDay)     count++;
+    if (count) {
+      badge.textContent = count;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
   /* ── Event binding ── */
   function bindEvents() {
 
+    /* Mobile toggle */
+    var toggleBtn = document.getElementById('db-filter-toggle');
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      var body    = document.getElementById('db-filters-body');
+      var chevron = document.getElementById('db-filter-chevron');
+      if (!body) return;
+      var open = body.classList.toggle('open');
+      if (chevron) chevron.classList.toggle('open', open);
+    });
+
     var statusSel = document.getElementById('db-status');
     if (statusSel) statusSel.addEventListener('change', function (e) {
-      state.status = e.target.value; renderResults();
+      state.status = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* Task Date */
@@ -337,28 +378,28 @@ window.Dashboard = (function () {
       state.taskDay   = '';
       refreshMonthSelect('db-td-month', 'taskDate', state.taskYear);
       refreshDaySelect(  'db-td-day',   'taskDate', state.taskYear, '');
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (tdMonth) tdMonth.addEventListener('change', function (e) {
       state.taskMonth = e.target.value;
       state.taskDay   = '';
       refreshDaySelect('db-td-day', 'taskDate', state.taskYear, state.taskMonth);
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (tdDay) tdDay.addEventListener('change', function (e) {
-      state.taskDay = e.target.value; renderResults();
+      state.taskDay = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* Contractor */
     var ctrSel = document.getElementById('db-contractor');
     if (ctrSel) ctrSel.addEventListener('change', function (e) {
-      state.contractor = e.target.value; renderResults();
+      state.contractor = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* Acceptance Status */
     var accSel = document.getElementById('db-acc-status');
     if (accSel) accSel.addEventListener('change', function (e) {
-      state.acceptanceStatus = e.target.value; renderResults();
+      state.acceptanceStatus = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* FAC Date */
@@ -371,16 +412,16 @@ window.Dashboard = (function () {
       state.facDay   = '';
       refreshMonthSelect('db-fd-month', 'facDate', state.facYear);
       refreshDaySelect(  'db-fd-day',   'facDate', state.facYear, '');
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (fdMonth) fdMonth.addEventListener('change', function (e) {
       state.facMonth = e.target.value;
       state.facDay   = '';
       refreshDaySelect('db-fd-day', 'facDate', state.facYear, state.facMonth);
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
     if (fdDay) fdDay.addEventListener('change', function (e) {
-      state.facDay = e.target.value; renderResults();
+      state.facDay = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* Clear — full re-render to reset all selects */
