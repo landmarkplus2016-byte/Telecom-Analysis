@@ -167,34 +167,34 @@ window.FinancialsModule = (function () {
 
       /* Contractor table */
       '<div class="table-container table-bordered">' +
-        '<table class="data-table">' +
+        '<table class="data-table fin-table-responsive">' +
           '<thead><tr>' +
             '<th>Contractor</th>' +
-            '<th class="col-center col-hide-mobile">Tax (Total / Contractor)</th>' +
+            '<th class="col-center">Tax (Total / Contractor)</th>' +
             '<th class="col-num">Total Amount taxed (EGP)</th>' +
             '<th class="col-num">LMP Portion taxed (EGP)</th>' +
             '<th class="col-num">Contractor Portion taxed (EGP)</th>' +
           '</tr></thead>' +
           '<tbody>' +
             rows.map(function (r) {
-              var taxBadge = contractorTaxLabel(r.name);
+              var taxBadge  = contractorTaxLabel(r.name);
               var isInHouse = String(r.name).trim().toLowerCase() === 'in-house';
               return '<tr>' +
-                '<td>' + escHtml(r.name) + '</td>' +
-                '<td class="col-center col-hide-mobile"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
-                '<td class="currency">' + fmt(r.amount) + '</td>' +
-                '<td class="currency">' + fmt(r.lmp)    + '</td>' +
-                '<td class="currency">' + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2)) + '</td>' +
+                '<td data-label="Contractor">' + escHtml(r.name) + '</td>' +
+                '<td class="col-center" data-label="Tax"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
+                '<td class="currency" data-label="Total Amount">' + fmt(r.amount) + '</td>' +
+                '<td class="currency" data-label="LMP Portion">' + fmt(r.lmp)    + '</td>' +
+                '<td class="currency" data-label="Contractor Portion">' + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2)) + '</td>' +
               '</tr>';
             }).join('') +
           '</tbody>' +
           '<tfoot>' +
             '<tr class="table-total-row">' +
-              '<td><strong>Total</strong></td>' +
-              '<td class="col-hide-mobile"></td>' +
-              '<td class="currency"><strong>' + fmt(totalAmount) + '</strong></td>' +
-              '<td class="currency"><strong>' + fmt(totalLMP)    + '</strong></td>' +
-              '<td class="currency"><strong>' + fmt(totalC2)     + '</strong></td>' +
+              '<td data-label=""><strong>Total</strong></td>' +
+              '<td data-label=""></td>' +
+              '<td class="currency" data-label="Total Amount"><strong>' + fmt(totalAmount) + '</strong></td>' +
+              '<td class="currency" data-label="LMP Portion"><strong>' + fmt(totalLMP)    + '</strong></td>' +
+              '<td class="currency" data-label="Contractor Portion"><strong>' + fmt(totalC2)     + '</strong></td>' +
             '</tr>' +
           '</tfoot>' +
         '</table>' +

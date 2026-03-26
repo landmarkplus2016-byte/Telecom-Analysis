@@ -448,6 +448,89 @@ input, select, textarea { font-family: inherit; }
   .kpi-grid-3 { grid-template-columns: 1fr !important; }
 }
 
+/* ── Financials table → card stack on mobile ── */
+@media (max-width: 768px) {
+
+  /* Hide normal table header */
+  .fin-table-responsive thead { display: none; }
+
+  /* Each row becomes a card */
+  .fin-table-responsive tbody tr {
+    display: block;
+    margin-bottom: .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  /* Each cell becomes a label : value row */
+  .fin-table-responsive tbody td,
+  .fin-table-responsive tfoot td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: .55rem .85rem;
+  }
+  .fin-table-responsive tbody td:last-child { border-bottom: none !important; }
+
+  /* Label pulled from data-label attribute */
+  .fin-table-responsive tbody td::before {
+    content: attr(data-label);
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: .75rem;
+  }
+
+  /* Hide the Tax cell entirely — not needed on mobile */
+  .fin-table-responsive tbody td:nth-child(2) { display: none; }
+
+  /* Contractor name row — larger & bold */
+  .fin-table-responsive tbody td:nth-child(1) {
+    background: #f8fafc;
+    font-weight: 700;
+    font-size: .85rem;
+    color: #0f172a;
+    justify-content: center;
+    border-bottom: 2px solid var(--border) !important;
+  }
+  .fin-table-responsive tbody td:nth-child(1)::before { display: none; }
+
+  /* Total footer row */
+  .fin-table-responsive tfoot tr {
+    display: block;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-top: .5rem;
+  }
+  .fin-table-responsive tfoot td {
+    border-bottom: 1px solid #e0e7ff !important;
+    background: #eff6ff;
+  }
+  .fin-table-responsive tfoot td:last-child { border-bottom: none !important; }
+  .fin-table-responsive tfoot td:nth-child(1),
+  .fin-table-responsive tfoot td:nth-child(2) { display: none; }
+  .fin-table-responsive tfoot td::before {
+    content: attr(data-label);
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: .75rem;
+  }
+}
+
 /* Table column alignment — all centered by default now */
 th.col-num    { text-align: center; }
 th.col-center { text-align: center; }
