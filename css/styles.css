@@ -360,7 +360,15 @@ input, select, textarea { font-family: inherit; }
 .data-table {
   width: 100%; border-collapse: collapse;
   background: #fff; font-size: .83rem;
-  min-width: 700px;
+}
+
+@media (max-width: 640px) {
+  .data-table            { font-size: .72rem; }
+  .data-table th,
+  .data-table td         { padding: .45rem .4rem; }
+  .task-name             { max-width: 120px; }
+  /* Hide less-critical columns on very small screens */
+  .data-table .col-hide-mobile { display: none; }
 }
 
 .data-table th {

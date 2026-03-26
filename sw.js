@@ -1,62 +1,102 @@
-const CACHE_NAME = 'telecom-analysis-v1';
+const CACHE_NAME = 'telecom-analysis-v2';
 
+// Relative paths work on both file:// and any HTTPS subdirectory (GitHub Pages, etc.)
 const CACHE_FILES = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/css/styles.css',
-  '/js/config.js',
-  '/js/parser.js',
-  '/js/charts.js',
-  '/js/dashboard.js',
-  '/js/tasks.js',
-  '/js/category.js',
-  '/js/financials.js',
-  '/js/admin.js',
-  '/js/dropbox.js',
-  '/js/pwa.js',
-  '/js/app.js',
-  '/assets/logo.svg'
+  './',
+  './index.html',
+  './manifest.json',
+  './css/styles.css',
+  './js/config.js',
+  './js/parser.js',
+  './js/charts.js',
+  './js/dashboard.js',
+  './js/tasks.js',
+  './js/category.js',
+  './js/financials.js',
+  './js/admin.js',
+  './js/dropbox.js',
+  './js/pwa.js',
+  './js/app.js',
+  './assets/logo.svg'
 ];
 
+/* ── Install: cache each file individually so one 404 never blocks the rest ── */
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CACHE_FILES))
-      .catch(() => {}) // Graceful if some files missing
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.allSettled(
+        CACHE_FILES.map(url => cache.add(url).catch(() => {}))
+      )
+    )
   );
   self.skipWaiting();
 });
 
+/* ── Activate: clean up old cache versions ── */
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
+/* ── Generate icon PNG via OffscreenCanvas (no physical file needed) ── */
+function makeIconResponse(size) {
+  try {
+    var canvas = new OffscreenCanvas(size, size);
+    var ctx    = canvas.getContext('2d');
+
+    // Rounded blue background
+    var r = size * 0.18;
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(size - r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r);
+    ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // "TA" text
+    ctx.fillStyle    = '#ffffff';
+    ctx.font         = 'bold ' + Math.round(size * 0.36) + 'px system-ui,sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TA', size / 2, size / 2);
+
+    return canvas.convertToBlob({ type: 'image/png' }).then(blob =>
+      new Response(blob, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public,max-age=86400' } })
+    );
+  } catch (e) {
+    return Promise.resolve(new Response(null, { status: 404 }));
+  }
+}
+
+/* ── Fetch ── */
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // Never cache Dropbox API calls — always fetch fresh
+  // Serve icons on-the-fly — no physical file required
+  if (url.endsWith('/assets/icon-192.png')) { event.respondWith(makeIconResponse(192)); return; }
+  if (url.endsWith('/assets/icon-512.png')) { event.respondWith(makeIconResponse(512)); return; }
+
+  // Never cache Dropbox calls
   if (url.includes('dropbox') || url.includes('dl=1')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // CDN resources: try network first, fall back to cache
+  // CDN: network first, cache fallback
   if (url.includes('cdn.jsdelivr') || url.includes('cdnjs.cloudflare')) {
     event.respondWith(
       fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
+        .then(res => { caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone())); return res; })
         .catch(() => caches.match(event.request))
     );
     return;
@@ -66,12 +106,9 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
+      return fetch(event.request).then(res => {
+        if (res.ok) caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone()));
+        return res;
       }).catch(() => cached);
     })
   );

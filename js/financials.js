@@ -170,7 +170,7 @@ window.FinancialsModule = (function () {
         '<table class="data-table">' +
           '<thead><tr>' +
             '<th>Contractor</th>' +
-            '<th class="col-center">Tax (Total / Contractor)</th>' +
+            '<th class="col-center col-hide-mobile">Tax (Total / Contractor)</th>' +
             '<th class="col-num">Total Amount taxed (EGP)</th>' +
             '<th class="col-num">LMP Portion taxed (EGP)</th>' +
             '<th class="col-num">Contractor Portion taxed (EGP)</th>' +
@@ -181,7 +181,7 @@ window.FinancialsModule = (function () {
               var isInHouse = String(r.name).trim().toLowerCase() === 'in-house';
               return '<tr>' +
                 '<td>' + escHtml(r.name) + '</td>' +
-                '<td class="col-center"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
+                '<td class="col-center col-hide-mobile"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
                 '<td class="currency">' + fmt(r.amount) + '</td>' +
                 '<td class="currency">' + fmt(r.lmp)    + '</td>' +
                 '<td class="currency">' + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2)) + '</td>' +
@@ -191,7 +191,7 @@ window.FinancialsModule = (function () {
           '<tfoot>' +
             '<tr class="table-total-row">' +
               '<td><strong>Total</strong></td>' +
-              '<td></td>' +
+              '<td class="col-hide-mobile"></td>' +
               '<td class="currency"><strong>' + fmt(totalAmount) + '</strong></td>' +
               '<td class="currency"><strong>' + fmt(totalLMP)    + '</strong></td>' +
               '<td class="currency"><strong>' + fmt(totalC2)     + '</strong></td>' +
