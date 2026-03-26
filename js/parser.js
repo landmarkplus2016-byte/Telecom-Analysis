@@ -99,7 +99,11 @@ window.Parser = (function () {
       receiving1Date: ci('1st Receiving Date'), receiving2Date: ci('2nd Receiving Date'),
       receiving1Amount: ci('1st Receiving Amount'), receiving2Amount: ci('2nd Receiving Amount'),
       remainingAmounts: ci('Remaining Amounts'), lmp: ci('LMP'),
-      lmpPortion: ci('LMP Portion'), contractorPortion: ci('Contractor Portion')
+      lmpPortion: ci('LMP Portion'), contractorPortion: ci('Contractor Portion'),
+      vfInvoiceNo:             ci('VF Invoice #'),
+      vfInvoiceSubmissionDate: ci('VF Invoice Submission Date'),
+      cashReceivedDate:        ci('Cash Received Date'),
+      contractor2:             ci('Contractor2')
     };
 
     var result = [];
@@ -141,7 +145,11 @@ window.Parser = (function () {
         remainingAmounts: getNum(row, cols.remainingAmounts),
         lmp: getNum(row, cols.lmp),
         lmpPortion: getNum(row, cols.lmpPortion),
-        contractorPortion: getNum(row, cols.contractorPortion)
+        contractorPortion: getNum(row, cols.contractorPortion),
+        vfInvoiceNo:             String(get(row, cols.vfInvoiceNo)).trim(),
+        vfInvoiceSubmissionDate: formatDate(get(row, cols.vfInvoiceSubmissionDate)),
+        cashReceivedDate:        formatDate(get(row, cols.cashReceivedDate)),
+        contractor2:             getNum(row, cols.contractor2)
       });
     }
 
