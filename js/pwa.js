@@ -92,37 +92,42 @@ window.PWAModule = (function () {
     ensureIcons();
   }
 
-  /* ── Pre-generate icons via canvas — update existing link tags in-place ── */
+  /* ── Ensure icon link tags exist — use real file, fall back to canvas blob ── */
   function ensureIcons() {
-    Promise.all([
-      generateIcon(192, 'icon-192.png'),
-      generateIcon(512, 'icon-512.png')
-    ]).then(function (results) {
-      results.forEach(function (r) {
-        var url = URL.createObjectURL(r.blob);
+    var icons = [
+      { size: 192, src: 'assets/icon-192.png', rel: 'icon',             type: 'image/png' },
+      { size: 512, src: 'assets/icon-512.png', rel: 'apple-touch-icon', type: null }
+    ];
 
-        if (r.size === 192) {
-          var favicon = document.querySelector('link[rel="icon"]');
-          if (!favicon) {
-            favicon = document.createElement('link');
-            favicon.rel  = 'icon';
-            favicon.type = 'image/png';
-            document.head.appendChild(favicon);
-          }
-          favicon.href = url;
+    icons.forEach(function (ic) {
+      var img = new Image();
+      img.onload = function () {
+        /* Real file loaded — make sure the link tag points to it */
+        var link = document.querySelector('link[rel="' + ic.rel + '"]');
+        if (!link) {
+          link = document.createElement('link');
+          link.rel  = ic.rel;
+          if (ic.type) link.type = ic.type;
+          link.href = ic.src;
+          document.head.appendChild(link);
         }
-
-        if (r.size === 512) {
-          var atIcon = document.querySelector('link[rel="apple-touch-icon"]');
-          if (!atIcon) {
-            atIcon = document.createElement('link');
-            atIcon.rel = 'apple-touch-icon';
-            document.head.appendChild(atIcon);
+      };
+      img.onerror = function () {
+        /* Real file missing — generate canvas fallback */
+        generateIcon(ic.size, ic.src).then(function (r) {
+          var url  = URL.createObjectURL(r.blob);
+          var link = document.querySelector('link[rel="' + ic.rel + '"]');
+          if (!link) {
+            link = document.createElement('link');
+            link.rel  = ic.rel;
+            if (ic.type) link.type = ic.type;
+            document.head.appendChild(link);
           }
-          atIcon.href = url;
-        }
-      });
-    }).catch(function () {});
+          link.href = url;
+        });
+      };
+      img.src = ic.src + '?_=' + Date.now();
+    });
   }
 
   return { register: register, generateIcon: generateIcon };

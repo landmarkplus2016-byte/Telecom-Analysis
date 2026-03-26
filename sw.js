@@ -1,4 +1,4 @@
-const CACHE_NAME = 'telecom-analysis-v3';
+const CACHE_NAME = 'telecom-analysis-v4';
 
 // Relative paths work on both file:// and any HTTPS subdirectory (GitHub Pages, etc.)
 const CACHE_FILES = [
@@ -82,9 +82,16 @@ function makeIconResponse(size) {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // Serve icons on-the-fly — no physical file required
-  if (url.endsWith('/assets/icon-192.png')) { event.respondWith(makeIconResponse(192)); return; }
-  if (url.endsWith('/assets/icon-512.png')) { event.respondWith(makeIconResponse(512)); return; }
+  // Icons: try actual file first, generate fallback only if missing
+  if (url.endsWith('/assets/icon-192.png') || url.endsWith('/assets/icon-512.png')) {
+    const size = url.endsWith('/assets/icon-192.png') ? 192 : 512;
+    event.respondWith(
+      fetch(event.request)
+        .then(res => res.ok ? res : makeIconResponse(size))
+        .catch(() => makeIconResponse(size))
+    );
+    return;
+  }
 
   // Never cache Dropbox calls
   if (url.includes('dropbox') || url.includes('dl=1')) {
