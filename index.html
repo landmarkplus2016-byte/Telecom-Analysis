@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="Telecom Department task tracking and analysis dashboard">
+  <title>Telecom Analysis</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════
+       Fixed Header
+  ════════════════════════════════════════ -->
+  <header class="app-header">
+    <button id="hamburger-btn" class="icon-btn" aria-label="Open menu" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="2" y1="5"  x2="18" y2="5"/>
+        <line x1="2" y1="10" x2="18" y2="10"/>
+        <line x1="2" y1="15" x2="18" y2="15"/>
+      </svg>
+    </button>
+
+    <div class="header-title">Telecom Analysis</div>
+
+    <div class="header-right">
+      <button id="install-btn" class="btn" aria-label="Install app">Install App</button>
+      <span id="last-sync-time"></span>
+      <button id="sync-btn" class="btn btn-primary" aria-label="Sync data">
+        <span class="sync-icon">&#8635;</span> Sync
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       Drawer Overlay
+  ════════════════════════════════════════ -->
+  <div id="drawer-overlay" class="drawer-overlay" role="presentation"></div>
+
+  <!-- ═══════════════════════════════════════
+       Side Drawer Navigation
+  ════════════════════════════════════════ -->
+  <nav id="side-drawer" class="side-drawer" aria-label="Main navigation">
+    <div class="drawer-header">
+      <div id="drawer-logo" class="drawer-logo" title="Click 5 times to unlock admin">
+        <img src="assets/logo.svg" alt="Telecom Analysis logo" width="32" height="32">
+        <span>Telecom Analysis</span>
+      </div>
+    </div>
+
+    <ul class="nav-list" role="menubar">
+      <li role="none">
+        <a href="#" class="nav-item active" data-section="dashboard" role="menuitem">
+          📊 Dashboard
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-item" data-section="tasks" role="menuitem">
+          📋 All Tasks <span id="tasks-badge" class="badge" aria-label="task count"></span>
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-item" data-section="category" role="menuitem">
+          📁 By Category
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-item" data-section="financials" role="menuitem">
+          💰 Financials
+        </a>
+      </li>
+
+      <!-- Admin — hidden until revealed -->
+      <li id="admin-nav-item" class="hidden" role="none">
+        <div class="nav-divider"></div>
+        <a href="#" class="nav-item" data-section="admin" role="menuitem">
+          ⚙️ Admin
+        </a>
+      </li>
+    </ul>
+
+    <div class="drawer-footer">
+      <div id="connection-status" class="status-pill" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="status-text">Not configured</span>
+      </div>
+      <span class="version-text">v1.0.0</span>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════
+       Main Content
+  ════════════════════════════════════════ -->
+  <main class="main-content" id="main-content">
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden" role="status" aria-label="Loading">
+      <div class="spinner"></div>
+      <p>Loading data…</p>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Not-configured banner -->
+    <div id="not-configured-banner" class="info-banner hidden" role="alert">
+      This app needs to be configured. Please ask your administrator for the setup link.
+    </div>
+
+    <!-- ── Dashboard ── -->
+    <section id="section-dashboard" class="section active" aria-label="Dashboard">
+      <div id="dashboard-content"></div>
+    </section>
+
+    <!-- ── All Tasks ── -->
+    <section id="section-tasks" class="section" aria-label="All Tasks">
+      <div id="tasks-content"></div>
+    </section>
+
+    <!-- ── By Category ── -->
+    <section id="section-category" class="section" aria-label="By Category">
+      <div id="category-content"></div>
+    </section>
+
+    <!-- ── Financials ── -->
+    <section id="section-financials" class="section" aria-label="Financials">
+      <div id="financials-content"></div>
+    </section>
+
+    <!-- ── Admin ── -->
+    <section id="section-admin" class="section" aria-label="Admin Panel">
+      <div id="admin-content"></div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       Scripts — order matters!
+  ════════════════════════════════════════ -->
+  <!-- CDN dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- App modules (load order enforced) -->
+  <script src="js/config.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/category.js"></script>
+  <script src="js/financials.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/dropbox.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
