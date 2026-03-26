@@ -27,6 +27,42 @@ window.ChartsModule = (function () {
     window.Charts = {};
   }
 
+  /* ── Pie ── */
+  function createPie(key, canvasId, labels, data, colors) {
+    destroy(key);
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    window.Charts[key] = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors || COLORS.slice(0, data.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 14, font: { size: 12 }, boxWidth: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                var pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+                return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed).toLocaleString('en-US') + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   /* ── Doughnut ── */
   function createDoughnut(key, canvasId, labels, data, colors) {
     destroy(key);
@@ -79,18 +115,33 @@ window.ChartsModule = (function () {
           legend: datasets.length > 1
             ? { position: 'bottom', labels: { padding: 12, font: { size: 12 }, boxWidth: 12 } }
             : { display: false },
-          tooltip: { mode: 'index', intersect: false }
+          tooltip: opts.egp ? {
+            callbacks: {
+              label: function (ctx) {
+                return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed.y).toLocaleString('en-US');
+              }
+            }
+          } : { mode: 'index', intersect: false }
         },
         scales: {
           x: { stacked: !!opts.stacked, grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45 } },
-          y: { stacked: !!opts.stacked, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+          y: {
+            stacked: !!opts.stacked,
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { size: 11 },
+              callback: opts.egp ? function (val) { return 'EGP ' + Number(val).toLocaleString('en-US'); } : undefined
+            },
+            beginAtZero: true
+          }
         }
       }
     });
   }
 
   /* ── Horizontal Bar ── */
-  function createHBar(key, canvasId, labels, data, color) {
+  function createHBar(key, canvasId, labels, data, color, opts) {
+    opts = opts || {};
     destroy(key);
     var ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -129,13 +180,23 @@ window.ChartsModule = (function () {
           tooltip: {
             callbacks: {
               label: function (ctx) {
+                if (opts.egp) {
+                  return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed.x).toLocaleString('en-US');
+                }
                 return '  ' + (ctx.dataset.label ? ctx.dataset.label + ': ' : '') + ctx.parsed.x.toLocaleString();
               }
             }
           }
         },
         scales: {
-          x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+          x: {
+            beginAtZero: true,
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { size: 11 },
+              callback: opts.egp ? function (val) { return 'EGP ' + Number(val).toLocaleString('en-US'); } : undefined
+            }
+          },
           y: { grid: { display: false }, ticks: { font: { size: 11 } } }
         }
       }
@@ -146,6 +207,7 @@ window.ChartsModule = (function () {
     COLORS: COLORS,
     destroy: destroy,
     destroyAll: destroyAll,
+    createPie: createPie,
     createDoughnut: createDoughnut,
     createBar: createBar,
     createHBar: createHBar

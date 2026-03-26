@@ -324,7 +324,23 @@ input, select, textarea { font-family: inherit; }
 
 .btn-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
 
-/* ── Filter Bar ── */
+/* ── Tasks filter grid ── */
+.tasks-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .85rem;
+}
+.tasks-filter-full { grid-column: 1 / -1; }
+
+@media (min-width: 640px) {
+  .tasks-filter-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .tasks-filter-grid { grid-template-columns: 1fr repeat(4, auto); align-items: end; }
+  .tasks-filter-full { grid-column: 1; }
+}
+
+/* ── Filter Bar (legacy) ── */
 .filter-bar { margin-bottom: 1rem; display: flex; flex-direction: column; gap: .75rem; }
 
 .search-input {

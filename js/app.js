@@ -10,7 +10,7 @@
   window.AppData = [];
 
   /* ── All sections ── */
-  var ALL_SECTIONS = ['dashboard', 'tasks', 'category', 'financials', 'admin'];
+  var ALL_SECTIONS = ['dashboard', 'tasks', 'financials', 'admin'];
   var currentSection = 'dashboard';
 
   /* ── Admin reveal state ── */
@@ -73,7 +73,6 @@
     switch (name) {
       case 'dashboard':  window.Dashboard       && window.Dashboard.render();       break;
       case 'tasks':      window.TasksModule      && window.TasksModule.render();     break;
-      case 'category':   window.CategoryModule   && window.CategoryModule.render();  break;
       case 'financials': window.FinancialsModule && window.FinancialsModule.render(); break;
       case 'admin':      window.AdminModule      && window.AdminModule.render();     break;
     }
