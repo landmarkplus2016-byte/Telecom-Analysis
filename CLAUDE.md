@@ -81,28 +81,33 @@ Charts are rendered inside `setTimeout(..., 60)` so the DOM has settled after `i
 
 ## Dashboard section (dashboard.js)
 
-### KPI Cards (6)
+**Architecture decision:** Dashboard always pre-filters to `status === 'Done'` tasks only. This is hardcoded in `applyFilters()` — there is no Status filter UI. All KPIs and charts reflect Done tasks only.
+
+### KPI Cards (5)
 
 | Card | Source field | Color |
 |---|---|---|
 | Total Amount | sum `newTotalPrice` | amber |
 | LMP Portion | sum `lmp` | purple |
 | Contractor Portion | sum `contractor2` | blue |
-| Done Amount | sum `newTotalPrice` where `taskDate` is filled | green |
 | FAC Amount | sum `newTotalPrice` where `facDate` is filled | teal |
 | NFAC Amount | sum `newTotalPrice` where `facDate` is empty | red |
+
+> The "Done Amount" card was removed — the dashboard already shows Done tasks only so it was redundant.
 
 ### Charts (3)
 
 | Chart | Type | Logic |
 |---|---|---|
 | Done vs NFAC Amount | Pie | Done = taskDate filled; NFAC = facDate empty |
-| FAC Invoicing Status | Column | FAC Not Invoiced = facDate filled & PO ≠ "received"; FAC Sent = PO = "sent" |
+| FAC Invoicing Status | Grouped Column | Two datasets per category: **LMP Portion** (purple) and **Contractor Portion** (blue); categories are FAC Not Invoiced (facDate filled & PO ≠ "received") and FAC Sent (PO = "sent") |
 | Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc |
 
-### Filters (5)
+### Filters (4)
 
-Status · Task Date · Contractor · Acceptance Status · FAC Date
+Task Date · Contractor · Acceptance Status · FAC Date
+
+> Status filter removed — dashboard is locked to Done tasks.
 
 All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 
@@ -110,9 +115,31 @@ All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 
 `render()` builds the filter bar once and writes a `#dash-results` div. Filter changes call `renderResults()` which recomputes KPIs and charts from the filtered subset — filter controls never lose their state or focus.
 
+## Invoices section (financials.js)
+
+Previously named "Financials". The nav item, section `aria-label`, and `<h2>` heading were all renamed to **Invoices**. The module filename and global (`window.FinancialsModule`) are unchanged.
+
+## All Tasks section (tasks.js)
+
+### Table columns (8)
+
+Job Code · Logical Site ID · Contractor · Line Item · New Total Price (EGP) · Status · Acceptance · **PO Status**
+
+> PO Status column was added as the rightmost column.
+
+### Total amount row
+
+A highlighted row (`.table-total-row`, light blue background) sits above the column headers showing the sum of `newTotalPrice` for **all filtered rows** (not just the current page). Updates on every filter change via `renderResults()`.
+
+### Filters
+
+Task Date · FAC Date · PO Status · Contractor · Search (Job Code, Site ID, Contractor, Line Item)
+
+All filters share the collapsible panel pattern (see below). Clear button resets all state and calls `render()`.
+
 ## Collapsible filter pattern (mobile UX)
 
-Used in **Dashboard** and **Financials**. CSS classes live in `styles.css`:
+Used in **Dashboard**, **Invoices**, and **All Tasks**. CSS classes live in `styles.css`:
 
 - `.dash-filter-toggle` — the toggle button, hidden on desktop (`≥768px`)
 - `.dash-filter-chevron` — rotates 180° when open (`.open` class)
@@ -125,10 +152,35 @@ Used in **Dashboard** and **Financials**. CSS classes live in `styles.css`:
 - Clear button resets all state and calls `render()` (full re-render to reset all select elements)
 - `updateFilterBadge()` must be called alongside `renderResults()` on every filter change
 
+## Section title convention
+
+Every section `<h2>` heading includes the same emoji used in the nav drawer:
+
+| Section | Icon | Nav label |
+|---|---|---|
+| Dashboard | 📊 | Dashboard |
+| All Tasks | 📋 | All Tasks |
+| Invoices | 💰 | Invoices |
+| Admin | ⚙️ | Admin |
+
+## Sidebar branding (drawer-brand-frame)
+
+The Landmark Plus logo is displayed in the side drawer above the footer, placed in a `<div class="drawer-brand-frame">`. The logo image (`assets/landmark-plus-logo.png`) has a black border with rounded corners applied directly via CSS — no background fill:
+
+```css
+.drawer-brand-logo {
+  border: 2.5px solid #000;
+  border-radius: 12px;
+  max-width: 140px;
+}
+```
+
+The logo file must be placed at `assets/landmark-plus-logo.png` and is included in the SW cache list.
+
 ## Adding a new section
 
 1. Add a `<section id="section-NAME">` + inner `<div id="NAME-content">` in `index.html`
-2. Add a nav item with `data-section="NAME"` in the drawer
+2. Add a nav item with `data-section="NAME"` in the drawer (include an emoji icon)
 3. Create `js/NAME.js` exposing `window.NAMEModule = { render }`
 4. Add `NAME` to `ALL_SECTIONS` in `app.js` and a `renderSection` branch
 5. Add the `<script>` tag before `dropbox.js` in `index.html`
@@ -148,10 +200,15 @@ Cache writes are wrapped in try/catch — large datasets may hit the ~5 MB quota
 
 All colors and spacing use CSS variables defined in `:root` in `css/styles.css`. Use the named color variables (`--primary`, `--success`, `--danger`, etc.) rather than hex values. KPI card accent colors are set via modifier classes (`.kpi-card.green`, `.kpi-card.red`, etc.).
 
+### Table total row
+
+`.table-total-row th` — used in the All Tasks table to show the filtered total above the column headers. Styled with `var(--primary-light)` background and `var(--primary-dark)` text.
+
 ## PWA & icons (pwa.js / sw.js)
 
 - Icon files expected at `assets/icon-192.png` and `assets/icon-512.png`
 - `sw.js` intercepts requests for those paths: **tries the real file first**, falls back to generating a canvas "TA" icon only if the file returns a non-OK response
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
-- SW cache is versioned (`CACHE_NAME` in `sw.js`) — bump the version string whenever cached files change to force clients to pick up the new SW
+- SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
+- Current cache version: `telecom-analysis-v8`
