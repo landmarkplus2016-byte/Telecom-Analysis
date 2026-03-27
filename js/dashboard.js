@@ -179,13 +179,19 @@ window.Dashboard = (function () {
     });
 
     /* ── Chart 2: FAC Invoicing Status ── */
-    var facNotInvoiced = 0, facSentInvoice = 0;
+    var facNotInv_lmp = 0, facNotInv_ctr = 0;
+    var facSent_lmp   = 0, facSent_ctr   = 0;
     data.forEach(function (r) {
       if (!filled(r.facDate)) return;
-      var price = r.newTotalPrice || 0;
       var po = String(r.poStatus || '').trim().toLowerCase();
-      if (po !== 'received') facNotInvoiced += price;
-      if (po === 'sent')     facSentInvoice += price;
+      if (po !== 'received') {
+        facNotInv_lmp += r.lmp        || 0;
+        facNotInv_ctr += r.contractor2 || 0;
+      }
+      if (po === 'sent') {
+        facSent_lmp += r.lmp        || 0;
+        facSent_ctr += r.contractor2 || 0;
+      }
     });
 
     /* ── Chart 3: Contractors Amount (top 10) ── */
@@ -231,12 +237,20 @@ window.Dashboard = (function () {
 
       C.createBar('d-fac-invoice', 'ch-fac-invoice',
         ['FAC Not Invoiced', 'FAC Sent to Invoice'],
-        [{
-          label: 'Amount',
-          data: [facNotInvoiced, facSentInvoice],
-          backgroundColor: ['#d97706', '#2563eb'],
-          borderRadius: 4
-        }],
+        [
+          {
+            label: 'LMP Portion',
+            data: [facNotInv_lmp, facSent_lmp],
+            backgroundColor: '#7c3aed',
+            borderRadius: 4
+          },
+          {
+            label: 'Contractor Portion',
+            data: [facNotInv_ctr, facSent_ctr],
+            backgroundColor: '#2563eb',
+            borderRadius: 4
+          }
+        ],
         { egp: true }
       );
 
