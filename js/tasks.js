@@ -255,7 +255,7 @@ window.TasksModule = (function () {
     var contractors = uniq(_data.map(function (r) { return r.contractor; }));
 
     el.innerHTML =
-      '<div class="section-header"><h2>All Tasks</h2></div>' +
+      '<div class="section-header"><h2>📋 All Tasks</h2></div>' +
 
       /* Filter card — built once */
       '<div class="card" style="margin-bottom:1rem">' +

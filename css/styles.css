@@ -175,6 +175,20 @@ input, select, textarea { font-family: inherit; }
 
 .nav-divider { height: 1px; background: var(--border); margin: .5rem 1.25rem; }
 
+.drawer-brand-frame {
+  margin: 0 1.25rem 1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.drawer-brand-logo {
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+  display: block;
+  border: 2.5px solid #000;
+  border-radius: 12px;
+}
+
 .drawer-footer {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--border);

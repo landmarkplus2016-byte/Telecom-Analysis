@@ -1,4 +1,4 @@
-const CACHE_NAME = 'telecom-analysis-v4';
+const CACHE_NAME = 'telecom-analysis-v6';
 
 // Relative paths work on both file:// and any HTTPS subdirectory (GitHub Pages, etc.)
 const CACHE_FILES = [
@@ -17,7 +17,8 @@ const CACHE_FILES = [
   './js/dropbox.js',
   './js/pwa.js',
   './js/app.js',
-  './assets/logo.svg'
+  './assets/logo.svg',
+  './assets/landmark-plus-logo.png'
 ];
 
 /* ── Install: cache each file individually so one 404 never blocks the rest ── */

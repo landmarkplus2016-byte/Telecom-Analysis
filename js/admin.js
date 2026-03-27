@@ -26,7 +26,7 @@ window.AdminModule = (function () {
     var syncDisplay = lastSync ? new Date(lastSync).toLocaleString() : 'Never';
 
     el.innerHTML =
-      '<div class="section-header"><h2>Admin Panel</h2><p class="section-sub">Hidden from normal users</p></div>' +
+      '<div class="section-header"><h2>⚙️ Admin Panel</h2><p class="section-sub">Hidden from normal users</p></div>' +
 
       // Card 1 — Dropbox URL
       '<div class="card admin-card">' +

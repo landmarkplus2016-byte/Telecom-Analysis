@@ -8,7 +8,6 @@ window.Dashboard = (function () {
 
   /* ── Filter state ── */
   var state = {
-    status:           '',
     taskYear:  '', taskMonth:  '', taskDay:  '',
     contractor:       '',
     acceptanceStatus: '',
@@ -145,7 +144,7 @@ window.Dashboard = (function () {
   /* ── Filter logic ── */
   function applyFilters() {
     return _data.filter(function (r) {
-      if (state.status           && r.status           !== state.status)           return false;
+      if (r.status !== 'Done') return false;
       if (state.contractor       && r.contractor       !== state.contractor)       return false;
       if (state.acceptanceStatus && r.acceptanceStatus !== state.acceptanceStatus) return false;
       if (!dateMatchesFilter(r.taskDate, state.taskYear,  state.taskMonth,  state.taskDay))  return false;
@@ -209,7 +208,6 @@ window.Dashboard = (function () {
         kpiCard('Total Amount',       fmt(totalAmount),       'amber') +
         kpiCard('LMP Portion',        fmt(lmpPortion),        'purple') +
         kpiCard('Contractor Portion', fmt(contractorPortion), 'blue') +
-        kpiCard('Done Amount',        fmt(doneAmount),        'green') +
         kpiCard('FAC Amount',         fmt(facAmount),         'teal') +
         kpiCard('NFAC Amount',        fmt(nfacAmount),        'red') +
       '</div>' +
@@ -263,12 +261,11 @@ window.Dashboard = (function () {
       return;
     }
 
-    var statuses    = uniq(_data.map(function (r) { return r.status; }));
     var contractors = uniq(_data.map(function (r) { return r.contractor; }));
     var accStatuses = uniq(_data.map(function (r) { return r.acceptanceStatus; }));
 
     el.innerHTML =
-      '<div class="section-header"><h2>Dashboard</h2></div>' +
+      '<div class="section-header"><h2>📊 Dashboard</h2></div>' +
 
       '<div class="card" style="margin-bottom:1.25rem">' +
 
@@ -283,11 +280,6 @@ window.Dashboard = (function () {
         /* Filter body — hidden on mobile until toggled */
         '<div id="db-filters-body" class="dash-filters-body">' +
           '<div class="fin-filters">' +
-
-            '<div class="fin-filter-group">' +
-              '<label class="field-label">Status</label>' +
-              buildDropdown('db-status', statuses, state.status, 'All Status') +
-            '</div>' +
 
             '<div class="fin-filter-group">' +
               '<label class="field-label">Task Date</label>' +
@@ -337,7 +329,6 @@ window.Dashboard = (function () {
     var badge   = document.getElementById('db-filter-badge');
     if (!badge) return;
     var count = 0;
-    if (state.status)                                        count++;
     if (state.taskYear || state.taskMonth || state.taskDay)  count++;
     if (state.contractor)                                    count++;
     if (state.acceptanceStatus)                              count++;
@@ -361,11 +352,6 @@ window.Dashboard = (function () {
       if (!body) return;
       var open = body.classList.toggle('open');
       if (chevron) chevron.classList.toggle('open', open);
-    });
-
-    var statusSel = document.getElementById('db-status');
-    if (statusSel) statusSel.addEventListener('change', function (e) {
-      state.status = e.target.value; updateFilterBadge(); renderResults();
     });
 
     /* Task Date */
@@ -427,7 +413,6 @@ window.Dashboard = (function () {
     /* Clear — full re-render to reset all selects */
     var clearBtn = document.getElementById('db-clear-btn');
     if (clearBtn) clearBtn.addEventListener('click', function () {
-      state.status = '';
       state.taskYear  = ''; state.taskMonth  = ''; state.taskDay  = '';
       state.contractor = '';
       state.acceptanceStatus = '';

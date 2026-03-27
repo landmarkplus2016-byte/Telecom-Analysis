@@ -218,7 +218,7 @@ window.FinancialsModule = (function () {
     }
 
     el.innerHTML =
-      '<div class="section-header"><h2>Financials</h2></div>' +
+      '<div class="section-header"><h2>💰 Invoices</h2></div>' +
 
       /* Filter card — built once, never rebuilt on filter changes */
       '<div class="card fin-filter-card">' +
