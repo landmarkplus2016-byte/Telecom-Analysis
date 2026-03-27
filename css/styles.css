@@ -401,6 +401,17 @@ input, select, textarea { font-family: inherit; }
   .data-table .col-hide-mobile { display: none; }
 }
 
+.table-total-row th {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .5rem .9rem;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border);
+}
+
 .data-table th {
   background: #f8fafc; padding: .7rem .9rem;
   text-align: center; font-size: .75rem; font-weight: 700;

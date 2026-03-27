@@ -26,6 +26,10 @@ window.TasksModule = (function () {
     return v ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-';
   }
 
+  function fmtEgp(n) {
+    return 'EGP ' + Math.round(Number(n || 0)).toLocaleString('en-US');
+  }
+
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -167,10 +171,26 @@ window.TasksModule = (function () {
     });
   }
 
+  /* ── Active filter count badge ── */
+  function updateFilterBadge() {
+    var badge = document.getElementById('tk-filter-badge');
+    if (!badge) return;
+    var count = 0;
+    if (state.query)                                           count++;
+    if (state.taskYear || state.taskMonth || state.taskDay)    count++;
+    if (state.facYear  || state.facMonth  || state.facDay)     count++;
+    if (state.poStatus)                                        count++;
+    if (state.contractor)                                      count++;
+    if (count) {
+      badge.textContent = count;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
   /* ═══════════════════════════════════════
      Partial render — table + pagination only
-     Called on every filter/page change so
-     the search input is never destroyed.
   ═══════════════════════════════════════ */
   function renderResults() {
     var container = document.getElementById('tasks-results');
@@ -184,6 +204,10 @@ window.TasksModule = (function () {
     var pageData   = _filtered.slice(start, start + state.pageSize);
     var end        = Math.min(start + state.pageSize, total);
 
+    /* Total amount of all filtered rows */
+    var totalAmount = 0;
+    _filtered.forEach(function (r) { totalAmount += r.newTotalPrice || 0; });
+
     /* Update count in-place */
     var countEl = document.getElementById('tasks-count');
     if (countEl) countEl.textContent = 'Showing ' + (total ? (start + 1) : 0) + '–' + end + ' of ' + total.toLocaleString() + ' tasks';
@@ -191,15 +215,23 @@ window.TasksModule = (function () {
     var html =
       '<div class="table-container">' +
         '<table class="data-table">' +
-          '<thead><tr>' +
-            '<th>Job Code</th>' +
-            '<th>Logical Site ID</th>' +
-            '<th>Contractor</th>' +
-            '<th>Line Item</th>' +
-            '<th class="col-num">New Total Price (EGP)</th>' +
-            '<th>Status</th>' +
-            '<th>Acceptance</th>' +
-          '</tr></thead>' +
+          '<thead>' +
+            '<tr class="table-total-row">' +
+              '<th colspan="4"></th>' +
+              '<th class="col-num">Total: ' + fmtEgp(totalAmount) + '</th>' +
+              '<th colspan="3"></th>' +
+            '</tr>' +
+            '<tr>' +
+              '<th>Job Code</th>' +
+              '<th>Logical Site ID</th>' +
+              '<th>Contractor</th>' +
+              '<th>Line Item</th>' +
+              '<th class="col-num">New Total Price (EGP)</th>' +
+              '<th>Status</th>' +
+              '<th>Acceptance</th>' +
+              '<th>PO Status</th>' +
+            '</tr>' +
+          '</thead>' +
           '<tbody>';
 
     pageData.forEach(function (r) {
@@ -212,6 +244,7 @@ window.TasksModule = (function () {
           '<td class="currency">' + fmt(r.newTotalPrice) + '</td>' +
           '<td>' + statusBadge(r.status) + '</td>' +
           '<td>' + accBadge(r.acceptanceStatus) + '</td>' +
+          '<td>' + escHtml(r.poStatus || '-') + '</td>' +
         '</tr>';
     });
 
@@ -257,49 +290,68 @@ window.TasksModule = (function () {
     el.innerHTML =
       '<div class="section-header"><h2>📋 All Tasks</h2></div>' +
 
-      /* Filter card — built once */
+      /* Filter card */
       '<div class="card" style="margin-bottom:1rem">' +
-        '<div class="tasks-filter-grid">' +
 
-          /* Search */
-          '<div class="tasks-filter-full">' +
-            '<input type="text" id="task-search" class="search-input" placeholder="Search Job Code, Site ID, Contractor, Line Item…" value="' + escHtml(state.query) + '">' +
-          '</div>' +
+        /* Mobile toggle header */
+        '<button id="tk-filter-toggle" class="dash-filter-toggle">' +
+          '<span class="dash-filter-toggle-label">Filters' +
+            '<span id="tk-filter-badge" class="dash-filter-count" style="display:none"></span>' +
+          '</span>' +
+          '<span class="dash-filter-chevron" id="tk-filter-chevron">&#9660;</span>' +
+        '</button>' +
 
-          /* Task Date */
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Task Date</label>' +
-            '<div class="date-group">' +
-              buildYearOpts( 'tk-td-year',  taskYears,  state.taskYear)  +
-              buildMonthOpts('tk-td-month', taskMonths, state.taskYear,  state.taskMonth) +
-              buildDayOpts(  'tk-td-day',   taskDays,   state.taskYear,  state.taskMonth, state.taskDay) +
+        /* Filter body */
+        '<div id="tk-filters-body" class="dash-filters-body">' +
+          '<div class="fin-filters">' +
+
+            /* Search — full width */
+            '<div class="fin-filter-group" style="flex:1 1 100%">' +
+              '<label class="field-label">Search</label>' +
+              '<input type="text" id="task-search" class="search-input" placeholder="Job Code, Site ID, Contractor, Line Item…" value="' + escHtml(state.query) + '">' +
             '</div>' +
-          '</div>' +
 
-          /* FAC Date */
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">FAC Date</label>' +
-            '<div class="date-group">' +
-              buildYearOpts( 'tk-fd-year',  facYears,  state.facYear)  +
-              buildMonthOpts('tk-fd-month', facMonths, state.facYear,  state.facMonth) +
-              buildDayOpts(  'tk-fd-day',   facDays,   state.facYear,  state.facMonth, state.facDay) +
+            /* Task Date */
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Task Date</label>' +
+              '<div class="date-group">' +
+                buildYearOpts( 'tk-td-year',  taskYears,  state.taskYear)  +
+                buildMonthOpts('tk-td-month', taskMonths, state.taskYear,  state.taskMonth) +
+                buildDayOpts(  'tk-td-day',   taskDays,   state.taskYear,  state.taskMonth, state.taskDay) +
+              '</div>' +
             '</div>' +
-          '</div>' +
 
-          /* PO Status */
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">PO Status</label>' +
-            buildDropdown('tk-po-status', poStatuses, state.poStatus, 'All PO Status') +
-          '</div>' +
+            /* FAC Date */
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">FAC Date</label>' +
+              '<div class="date-group">' +
+                buildYearOpts( 'tk-fd-year',  facYears,  state.facYear)  +
+                buildMonthOpts('tk-fd-month', facMonths, state.facYear,  state.facMonth) +
+                buildDayOpts(  'tk-fd-day',   facDays,   state.facYear,  state.facMonth, state.facDay) +
+              '</div>' +
+            '</div>' +
 
-          /* Contractor */
-          '<div class="fin-filter-group">' +
-            '<label class="field-label">Contractor</label>' +
-            buildDropdown('tk-contractor', contractors, state.contractor, 'All Contractors') +
-          '</div>' +
+            /* PO Status */
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">PO Status</label>' +
+              buildDropdown('tk-po-status', poStatuses, state.poStatus, 'All PO Status') +
+            '</div>' +
 
+            /* Contractor */
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">Contractor</label>' +
+              buildDropdown('tk-contractor', contractors, state.contractor, 'All Contractors') +
+            '</div>' +
+
+            /* Clear */
+            '<div class="fin-filter-group" style="display:flex;align-items:flex-end">' +
+              '<button id="tk-clear-btn" class="btn btn-outline" style="width:100%">Clear</button>' +
+            '</div>' +
+
+          '</div>' +
         '</div>' +
-        '<p id="tasks-count" class="results-count" style="margin-top:.75rem"></p>' +
+
+        '<p id="tasks-count" class="results-count" style="margin-top:.75rem;padding:0 1rem 1rem"></p>' +
       '</div>' +
 
       /* Results container */
@@ -312,12 +364,22 @@ window.TasksModule = (function () {
   /* ── Event binding ── */
   function bindFilterEvents() {
 
-    /* Search — partial render only → no focus loss */
+    /* Mobile toggle */
+    var toggleBtn = document.getElementById('tk-filter-toggle');
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      var body    = document.getElementById('tk-filters-body');
+      var chevron = document.getElementById('tk-filter-chevron');
+      if (!body) return;
+      var open = body.classList.toggle('open');
+      if (chevron) chevron.classList.toggle('open', open);
+    });
+
+    /* Search */
     var searchEl = document.getElementById('task-search');
     if (searchEl) searchEl.addEventListener('input', function (e) {
       state.query = e.target.value;
       state.page  = 1;
-      renderResults();
+      updateFilterBadge(); renderResults();
     });
 
     /* Task Date */
@@ -331,17 +393,17 @@ window.TasksModule = (function () {
       state.taskDay   = '';
       refreshMonthSelect('tk-td-month', 'taskDate', state.taskYear);
       refreshDaySelect(  'tk-td-day',   'taskDate', state.taskYear, '');
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
     if (tdMonth) tdMonth.addEventListener('change', function (e) {
       state.taskMonth = e.target.value;
       state.taskDay   = '';
       refreshDaySelect('tk-td-day', 'taskDate', state.taskYear, state.taskMonth);
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
     if (tdDay) tdDay.addEventListener('change', function (e) {
       state.taskDay = e.target.value;
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
 
     /* FAC Date */
@@ -355,31 +417,43 @@ window.TasksModule = (function () {
       state.facDay   = '';
       refreshMonthSelect('tk-fd-month', 'facDate', state.facYear);
       refreshDaySelect(  'tk-fd-day',   'facDate', state.facYear, '');
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
     if (fdMonth) fdMonth.addEventListener('change', function (e) {
       state.facMonth = e.target.value;
       state.facDay   = '';
       refreshDaySelect('tk-fd-day', 'facDate', state.facYear, state.facMonth);
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
     if (fdDay) fdDay.addEventListener('change', function (e) {
       state.facDay = e.target.value;
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
 
     /* PO Status */
     var poSel = document.getElementById('tk-po-status');
     if (poSel) poSel.addEventListener('change', function (e) {
       state.poStatus = e.target.value;
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
     });
 
     /* Contractor */
     var ctrSel = document.getElementById('tk-contractor');
     if (ctrSel) ctrSel.addEventListener('change', function (e) {
       state.contractor = e.target.value;
-      state.page = 1; renderResults();
+      state.page = 1; updateFilterBadge(); renderResults();
+    });
+
+    /* Clear */
+    var clearBtn = document.getElementById('tk-clear-btn');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      state.query      = '';
+      state.taskYear   = ''; state.taskMonth  = ''; state.taskDay   = '';
+      state.facYear    = ''; state.facMonth   = ''; state.facDay    = '';
+      state.poStatus   = '';
+      state.contractor = '';
+      state.page       = 1;
+      render();
     });
   }
 
