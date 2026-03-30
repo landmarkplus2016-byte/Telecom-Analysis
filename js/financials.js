@@ -121,6 +121,38 @@ window.FinancialsModule = (function () {
     return Object.keys(seen).sort();
   }
 
+  /* When an exact invoice number is selected, auto-fill its dates into state.
+     Returns true if a match was found. */
+  function autoFillDates(invoiceNo) {
+    var trimmed = String(invoiceNo || '').trim();
+    if (!trimmed) return false;
+    var match = null;
+    for (var i = 0; i < _data.length; i++) {
+      if (String(_data[i].vfInvoiceNo || '').trim() === trimmed) { match = _data[i]; break; }
+    }
+    if (!match) return false;
+
+    var sp = parseDateParts(match.vfInvoiceSubmissionDate);
+    if (sp) {
+      state.vfSubmitYear  = String(sp.year);
+      state.vfSubmitMonth = String(sp.month);
+      state.vfSubmitDay   = String(sp.day);
+    } else {
+      state.vfSubmitYear = state.vfSubmitMonth = state.vfSubmitDay = '';
+    }
+
+    var cp = parseDateParts(match.cashReceivedDate);
+    if (cp) {
+      state.cashRcvYear  = String(cp.year);
+      state.cashRcvMonth = String(cp.month);
+      state.cashRcvDay   = String(cp.day);
+    } else {
+      state.cashRcvYear = state.cashRcvMonth = state.cashRcvDay = '';
+    }
+
+    return true;
+  }
+
   var MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   /* ── Filter logic ── */
@@ -434,11 +466,18 @@ window.FinancialsModule = (function () {
       if (chevron) chevron.classList.toggle('open', open);
     });
 
-    /* VF Invoice # — partial render only → no focus loss */
+    /* VF Invoice # — if value exactly matches a known invoice, auto-fill its
+       dates and do a full render (to update the date selects); otherwise just
+       filter in-place so typing doesn't lose focus. */
     var inv = document.getElementById('fin-vf-invoice');
     if (inv) inv.addEventListener('input', function (e) {
       state.vfInvoiceNo = e.target.value;
-      updateFilterBadge(); renderResults();
+      var exactMatch = autoFillDates(state.vfInvoiceNo);
+      if (exactMatch) {
+        render(); // full rebuild so year/month/day selects reflect auto-filled dates
+      } else {
+        updateFilterBadge(); renderResults();
+      }
     });
 
     /* VF Invoice Submission Date */
