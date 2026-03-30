@@ -621,6 +621,23 @@ input, select, textarea { font-family: inherit; }
   }
 }
 
+/* ── Invoices table: Old / New sub-columns ── */
+th.fin-sub-head {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  padding-top: .35rem;
+  padding-bottom: .35rem;
+}
+th.fin-sub-new,
+td.fin-col-new {
+  background: #eff6ff;
+}
+
 /* Table column alignment — all centered by default now */
 th.col-num    { text-align: center; }
 th.col-center { text-align: center; }
