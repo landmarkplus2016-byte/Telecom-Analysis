@@ -63,6 +63,8 @@ On page load, `app.js` reads `localStorage` and populates `window.AppData` befor
 - Acceptance Status normalized to uppercase: `FAC | TOC | PAC`
 - Excel serial dates converted via `(val - 25569) * 86400000` ms offset
 - `contractor2` is parsed as a **number** (`getNum`) — it holds the contractor's EGP portion, not a name
+- `ctrInvoiceNo` is parsed as a string — the contractor's own invoice reference number
+- `ctrInvoiceSubmitDate` is parsed as a formatted date string via `formatDate`
 
 ## Chart pattern
 
@@ -83,25 +85,28 @@ Charts are rendered inside `setTimeout(..., 60)` so the DOM has settled after `i
 
 **Architecture decision:** Dashboard always pre-filters to `status === 'Done'` tasks only. This is hardcoded in `applyFilters()` — there is no Status filter UI. All KPIs and charts reflect Done tasks only.
 
-### KPI Cards (5)
+### KPI Cards (3)
+
+Uses `kpi-grid kpi-grid-3` — stacks to a single column on mobile (≤480px).
 
 | Card | Source field | Color |
 |---|---|---|
-| Total Amount | sum `newTotalPrice` | amber |
-| LMP Portion | sum `lmp` | purple |
-| Contractor Portion | sum `contractor2` | blue |
-| FAC Amount | sum `newTotalPrice` where `facDate` is filled | teal |
-| NFAC Amount | sum `newTotalPrice` where `facDate` is empty | red |
+| Total Amount | sum `newTotalPrice` | green |
+| LMP Portion | sum `lmp` | blue |
+| Contractor Portion | sum `contractor2` | red |
 
-> The "Done Amount" card was removed — the dashboard already shows Done tasks only so it was redundant.
+> FAC Amount and NFAC Amount cards were removed — redundant given the chart coverage.
 
-### Charts (3)
+### Charts (4)
 
 | Chart | Type | Logic |
 |---|---|---|
-| Done vs NFAC Amount | Pie | Done = taskDate filled; NFAC = facDate empty |
-| FAC Invoicing Status | Grouped Column | Two datasets per category: **LMP Portion** (purple) and **Contractor Portion** (blue); categories are FAC Not Invoiced (facDate filled & PO ≠ "received") and FAC Sent (PO = "sent") |
-| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc |
+| Old vs New Amount | Grouped Column | Splits tasks by `taskDate` year: **Old** = pre-2026, **New** = 2026+; datasets are LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); tasks with no `taskDate` excluded |
+| Done vs NFAC Amount | Pie | Done = `taskDate` filled; NFAC = `facDate` empty |
+| FAC Invoicing Status | Grouped Column | LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); categories are FAC Not Invoiced and FAC Sent to Invoice |
+| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; bars use red shades (`rgba(220,38,38,...)`) with opacity gradient |
+
+Chart order: Old vs New → Done vs NFAC → FAC Invoicing Status → Contractors Amount.
 
 ### Filters (4)
 
@@ -118,6 +123,35 @@ All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 ## Invoices section (financials.js)
 
 Previously named "Financials". The nav item, section `aria-label`, and `<h2>` heading were all renamed to **Invoices**. The module filename and global (`window.FinancialsModule`) are unchanged.
+
+### Filters (5)
+
+VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date**
+
+### Auto-fill behavior
+
+Two invoice auto-fill chains exist:
+
+**VF Invoice # selected (exact match):**
+- Auto-fills VF Invoice Submission Date
+- Auto-fills Cash Received Date
+- Triggers full `render()` to rebuild date selects
+
+**Contractor Invoice # selected (exact match):**
+- Auto-fills Contractor Invoice Subm Date
+- Auto-fills VF Invoice # (linked from same row)
+- Auto-fills VF Invoice Submission Date
+- Auto-fills Cash Received Date
+- Triggers full `render()` to rebuild all date selects
+
+Partial/typed values (no exact match) filter in-place via `renderResults()` without rebuilding the filter bar.
+
+### Parser fields for Contractor Invoice
+
+| Field | Excel column | Type |
+|---|---|---|
+| `ctrInvoiceNo` | `Contractor Invoice #` | string |
+| `ctrInvoiceSubmitDate` | `Contractor Invoice Subm Date` | formatted date string |
 
 ## All Tasks section (tasks.js)
 
