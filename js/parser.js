@@ -103,7 +103,9 @@ window.Parser = (function () {
       vfInvoiceNo:             ci('VF Invoice #'),
       vfInvoiceSubmissionDate: ci('VF Invoice Submission Date'),
       cashReceivedDate:        ci('Cash Received Date'),
-      contractor2:             ci('Contractor2')
+      contractor2:             ci('Contractor2'),
+      ctrInvoiceNo:            ci('Contractor Invoice #'),
+      ctrInvoiceSubmitDate:    ci('Contractor Invoice Subm Date')
     };
 
     var result = [];
@@ -149,7 +151,9 @@ window.Parser = (function () {
         vfInvoiceNo:             String(get(row, cols.vfInvoiceNo)).trim(),
         vfInvoiceSubmissionDate: formatDate(get(row, cols.vfInvoiceSubmissionDate)),
         cashReceivedDate:        formatDate(get(row, cols.cashReceivedDate)),
-        contractor2:             getNum(row, cols.contractor2)
+        contractor2:             getNum(row, cols.contractor2),
+        ctrInvoiceNo:            String(get(row, cols.ctrInvoiceNo)).trim(),
+        ctrInvoiceSubmitDate:    formatDate(get(row, cols.ctrInvoiceSubmitDate))
       });
     }
 

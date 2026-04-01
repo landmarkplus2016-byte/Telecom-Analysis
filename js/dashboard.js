@@ -167,15 +167,28 @@ window.Dashboard = (function () {
 
     /* ── KPI sums ── */
     var totalAmount = 0, lmpPortion = 0, contractorPortion = 0;
-    var doneAmount  = 0, facAmount  = 0, nfacAmount = 0;
+    var doneAmount  = 0, nfacAmount = 0;
     data.forEach(function (r) {
       var price = r.newTotalPrice || 0;
       totalAmount       += price;
       lmpPortion        += r.lmp || 0;
       contractorPortion += r.contractor2 || 0;
       if (filled(r.taskDate)) doneAmount += price;
-      if (filled(r.facDate))  facAmount  += price;
-      else                    nfacAmount += price;
+      if (!filled(r.facDate)) nfacAmount += price;
+    });
+
+    /* ── Chart 1: Old vs New Amount (cutoff 1-Jan-2026) ── */
+    var oldLmp = 0, oldCtr = 0, newLmp = 0, newCtr = 0;
+    data.forEach(function (r) {
+      var p = parseDateParts(r.taskDate);
+      if (!p) return;
+      if (p.year >= 2026) {
+        newLmp += r.lmp        || 0;
+        newCtr += r.contractor2 || 0;
+      } else {
+        oldLmp += r.lmp        || 0;
+        oldCtr += r.contractor2 || 0;
+      }
     });
 
     /* ── Chart 2: FAC Invoicing Status ── */
@@ -206,18 +219,18 @@ window.Dashboard = (function () {
     var top10 = cArr.slice(0, 10);
     var top10Colors = top10.map(function (e, i) {
       var opacity = parseFloat((1 - (i / Math.max(top10.length, 1)) * 0.45).toFixed(2));
-      return 'rgba(37,99,235,' + opacity + ')';
+      return 'rgba(220,38,38,' + opacity + ')';
     });
 
     container.innerHTML =
-      '<div class="kpi-grid">' +
-        kpiCard('Total Amount',       fmt(totalAmount),       'amber') +
-        kpiCard('LMP Portion',        fmt(lmpPortion),        'purple') +
-        kpiCard('Contractor Portion', fmt(contractorPortion), 'blue') +
-        kpiCard('FAC Amount',         fmt(facAmount),         'teal') +
-        kpiCard('NFAC Amount',        fmt(nfacAmount),        'red') +
+      '<div class="kpi-grid kpi-grid-3">' +
+        kpiCard('Total Amount',       fmt(totalAmount),       'green') +
+        kpiCard('LMP Portion',        fmt(lmpPortion),        'blue') +
+        kpiCard('Contractor Portion', fmt(contractorPortion), 'red') +
       '</div>' +
       '<div class="charts-grid">' +
+        '<div class="chart-card"><h3>Old vs New Amount</h3>' +
+          '<div class="chart-wrap"><canvas id="ch-old-new"></canvas></div></div>' +
         '<div class="chart-card"><h3>Done vs NFAC Amount</h3>' +
           '<div class="chart-wrap"><canvas id="ch-done-nfac"></canvas></div></div>' +
         '<div class="chart-card"><h3>FAC Invoicing Status</h3>' +
@@ -228,6 +241,25 @@ window.Dashboard = (function () {
 
     setTimeout(function () {
       var C = window.ChartsModule;
+
+      C.createBar('d-old-new', 'ch-old-new',
+        ['Old Tasks (Pre-2026)', 'New Tasks (2026+)'],
+        [
+          {
+            label: 'LMP Portion',
+            data: [oldLmp, newLmp],
+            backgroundColor: '#2563eb',
+            borderRadius: 4
+          },
+          {
+            label: 'Contractor Portion',
+            data: [oldCtr, newCtr],
+            backgroundColor: '#dc2626',
+            borderRadius: 4
+          }
+        ],
+        { egp: true }
+      );
 
       C.createPie('d-done-nfac', 'ch-done-nfac',
         ['Done', 'NFAC'],
@@ -241,13 +273,13 @@ window.Dashboard = (function () {
           {
             label: 'LMP Portion',
             data: [facNotInv_lmp, facSent_lmp],
-            backgroundColor: '#7c3aed',
+            backgroundColor: '#2563eb',
             borderRadius: 4
           },
           {
             label: 'Contractor Portion',
             data: [facNotInv_ctr, facSent_ctr],
-            backgroundColor: '#2563eb',
+            backgroundColor: '#dc2626',
             borderRadius: 4
           }
         ],
