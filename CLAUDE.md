@@ -124,9 +124,47 @@ All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 
 Previously named "Financials". The nav item, section `aria-label`, and `<h2>` heading were all renamed to **Invoices**. The module filename and global (`window.FinancialsModule`) are unchanged.
 
+### KPI Cards (3)
+
+Each card shows the total value as the main figure, with an **Old / New breakdown subtitle** below it.
+
+| Card | Tax note | Color |
+|---|---|---|
+| Total Amount | +14% | green |
+| LMP Portion | total − contractor | blue |
+| Contractor Portion | +11% / 13% | red |
+
+`kpiCard(label, value, cls, subtitle)` — the 4th `subtitle` parameter is optional; renders as `.kpi-subtitle` (small muted text below the value).
+
+### Contractor table
+
+Groups by **contractor** (one row per contractor). Columns:
+
+| Column | Notes |
+|---|---|
+| Contractor | — |
+| Tax | Contractor-only rate: `11%` / `13%` / `14%` (In-House). Not the combined "14%/11%" format. |
+| Contractor Portion taxed (EGP) | 3-level header → Old / New → Invoice # / Amount |
+
+**3-level thead structure:**
+- Row 1: `Contractor` (rowspan=3) · `Tax` (rowspan=3) · `Contractor Portion taxed (EGP)` (colspan=4)
+- Row 2: `Old` (colspan=2) · `New` (colspan=2)
+- Row 3: `Invoice #` · `Amount` · `Invoice #` · `Amount`
+
+**Architecture decision:** LMP Portion was removed from the table — it is already visible in the KPI cards with Old/New breakdowns. The table focuses solely on Contractor Portion with per-period invoice numbers.
+
+Invoice numbers (`ctrInvoiceNo`) are collected per contractor per period into `invOld` / `invNew` sets and displayed as comma-separated strings (or `—` if none).
+
 ### Filters (5)
 
 VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date**
+
+### Contractor Invoice # datalist filtering
+
+When a VF Invoice # is active, the Contractor Invoice # datalist shows **only the contractor invoices linked to that VF invoice**. This is enforced in two places:
+
+1. **`buildFilterHTML()`** — filters `_data` by exact `vfInvoiceNo` match when building the contractor datalist (applies on full `render()` calls, i.e. exact VF invoice match or clear).
+2. **`renderResults()`** — also refreshes the contractor datalist `innerHTML` on every partial filter change, so the datalist stays in sync even when `render()` is not triggered.
 
 ### Auto-fill behavior
 
@@ -135,6 +173,7 @@ Two invoice auto-fill chains exist:
 **VF Invoice # selected (exact match):**
 - Auto-fills VF Invoice Submission Date
 - Auto-fills Cash Received Date
+- Filters Contractor Invoice # datalist to only related invoices
 - Triggers full `render()` to rebuild date selects
 
 **Contractor Invoice # selected (exact match):**
@@ -237,6 +276,10 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 ### Table total row
 
 `.table-total-row th` — used in the All Tasks table to show the filtered total above the column headers. Styled with `var(--primary-light)` background and `var(--primary-dark)` text.
+
+### KPI subtitle
+
+`.kpi-subtitle` — small muted line rendered below `.kpi-value` inside a KPI card. Used in the Invoices section to show the Old / New breakdown beneath each card's total. Pass as the 4th argument to `kpiCard()`.
 
 ## PWA & icons (pwa.js / sw.js)
 
