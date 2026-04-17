@@ -264,6 +264,7 @@ input, select, textarea { font-family: inherit; }
 .text-muted { color: var(--muted); }
 .kpi-value { font-size: 1.25rem; font-weight: 700; color: #0f172a; }
 .kpi-value-sm { font-size: 1rem; }
+.kpi-subtitle { font-size: .7rem; color: var(--muted); margin-top: .35rem; }
 
 /* ── Charts Grid ── */
 .charts-grid {

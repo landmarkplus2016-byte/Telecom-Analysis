@@ -254,11 +254,14 @@ window.FinancialsModule = (function () {
       totalC2     += t.contractorTaxed;
     });
 
-    /* Group by contractor — track Old/New splits */
+    /* Group by contractor + contractor invoice # — track Old/New splits */
     var cmap = {};
     filtered.forEach(function (r) {
-      var key = r.contractor || '(Unknown)';
+      var ctr = r.contractor || '(Unknown)';
+      var inv = String(r.ctrInvoiceNo || '').trim() || '—';
+      var key = ctr + '\x00' + inv;
       if (!cmap[key]) cmap[key] = {
+        name: ctr, invoiceNo: inv,
         amount: 0, lmp: 0, c2: 0,
         amountOld: 0, lmpOld: 0, c2Old: 0,
         amountNew: 0, lmpNew: 0, c2New: 0
@@ -280,7 +283,7 @@ window.FinancialsModule = (function () {
     });
 
     var rows = Object.keys(cmap)
-      .map(function (k) { return Object.assign({ name: k }, cmap[k]); })
+      .map(function (k) { return cmap[k]; })
       .sort(function (a, b) { return b.amount - a.amount; });
 
     /* Grand old/new totals for tfoot */
@@ -292,27 +295,34 @@ window.FinancialsModule = (function () {
     });
 
     container.innerHTML =
-      /* 3 KPI cards */
+      /* 3 KPI cards — value shows total, subtitle shows Old / New breakdown */
       '<div class="kpi-grid kpi-grid-3">' +
-        kpiCard('Total Amount <span class="kpi-tax-note">+14% tax</span>',             fmt(totalAmount) + ' EGP', 'green') +
-        kpiCard('LMP Portion <span class="kpi-tax-note">total − contractor</span>',    fmt(totalLMP)    + ' EGP', 'blue')  +
-        kpiCard('Contractor Portion <span class="kpi-tax-note">+11% / 13% tax</span>', fmt(totalC2)     + ' EGP', 'red')   +
+        kpiCard('Total Amount <span class="kpi-tax-note">+14% tax</span>',
+                fmt(totalAmount) + ' EGP',
+                'green',
+                'Old: ' + fmt(totAmtOld) + ' &nbsp;|&nbsp; New: ' + fmt(totAmtNew)) +
+        kpiCard('LMP Portion <span class="kpi-tax-note">total − contractor</span>',
+                fmt(totalLMP) + ' EGP',
+                'blue',
+                'Old: ' + fmt(totLmpOld) + ' &nbsp;|&nbsp; New: ' + fmt(totLmpNew)) +
+        kpiCard('Contractor Portion <span class="kpi-tax-note">+11% / 13% tax</span>',
+                fmt(totalC2) + ' EGP',
+                'red',
+                'Old: ' + fmt(totC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(totC2New)) +
       '</div>' +
 
-      /* Contractor table — two-row header with Old/New splits */
+      /* Contractor table — LMP and Contractor Portion only with Old/New splits */
       '<div class="table-container table-bordered">' +
         '<table class="data-table fin-table-responsive">' +
           '<thead>' +
             '<tr>' +
               '<th rowspan="2">Contractor</th>' +
+              '<th rowspan="2">Contractor Invoice #</th>' +
               '<th rowspan="2" class="col-center">Tax (Total / Contractor)</th>' +
-              '<th colspan="2" class="col-center">Total Amount taxed (EGP)</th>' +
               '<th colspan="2" class="col-center">LMP Portion taxed (EGP)</th>' +
               '<th colspan="2" class="col-center">Contractor Portion taxed (EGP)</th>' +
             '</tr>' +
             '<tr>' +
-              '<th class="col-num fin-sub-head">Old</th>' +
-              '<th class="col-num fin-sub-head fin-sub-new">New</th>' +
               '<th class="col-num fin-sub-head">Old</th>' +
               '<th class="col-num fin-sub-head fin-sub-new">New</th>' +
               '<th class="col-num fin-sub-head">Old</th>' +
@@ -325,9 +335,8 @@ window.FinancialsModule = (function () {
               var isInHouse = String(r.name).trim().toLowerCase() === 'in-house';
               return '<tr>' +
                 '<td data-label="Contractor">' + escHtml(r.name) + '</td>' +
+                '<td data-label="Contractor Invoice #">' + escHtml(r.invoiceNo) + '</td>' +
                 '<td class="col-center" data-label="Tax"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
-                '<td class="currency" data-label="Total Old">'        + fmt(r.amountOld) + '</td>' +
-                '<td class="currency fin-col-new" data-label="Total New">'        + fmt(r.amountNew) + '</td>' +
                 '<td class="currency" data-label="LMP Old">'          + fmt(r.lmpOld)    + '</td>' +
                 '<td class="currency fin-col-new" data-label="LMP New">'          + fmt(r.lmpNew)    + '</td>' +
                 '<td class="currency" data-label="Contractor Old">'   + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2Old))  + '</td>' +
@@ -339,8 +348,7 @@ window.FinancialsModule = (function () {
             '<tr class="table-total-row">' +
               '<td><strong>Total</strong></td>' +
               '<td></td>' +
-              '<td class="currency"><strong>' + fmt(totAmtOld) + '</strong></td>' +
-              '<td class="currency fin-col-new"><strong>' + fmt(totAmtNew) + '</strong></td>' +
+              '<td></td>' +
               '<td class="currency"><strong>' + fmt(totLmpOld) + '</strong></td>' +
               '<td class="currency fin-col-new"><strong>' + fmt(totLmpNew) + '</strong></td>' +
               '<td class="currency"><strong>' + fmt(totC2Old)  + '</strong></td>' +
@@ -667,10 +675,11 @@ window.FinancialsModule = (function () {
     });
   }
 
-  function kpiCard(label, value, cls) {
+  function kpiCard(label, value, cls, subtitle) {
     return '<div class="kpi-card ' + (cls || '') + '">' +
       '<div class="kpi-label">' + label + '</div>' +
       '<div class="kpi-value">' + value + '</div>' +
+      (subtitle ? '<div class="kpi-subtitle">' + subtitle + '</div>' : '') +
       '</div>';
   }
 
