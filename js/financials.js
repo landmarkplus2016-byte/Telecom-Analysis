@@ -334,12 +334,12 @@ window.FinancialsModule = (function () {
               '<th colspan="4" class="col-center">Contractor Portion taxed (EGP)</th>' +
             '</tr>' +
             '<tr>' +
-              '<th colspan="2" class="col-center fin-sub-head">Old</th>' +
+              '<th colspan="2" class="col-center fin-sub-head fin-sub-old">Old</th>' +
               '<th colspan="2" class="col-center fin-sub-head fin-sub-new">New</th>' +
             '</tr>' +
             '<tr>' +
-              '<th class="col-center fin-sub-head fin-sub-inv">Invoice #</th>' +
-              '<th class="col-num fin-sub-head">Amount</th>' +
+              '<th class="col-center fin-sub-head fin-sub-old fin-sub-inv">Invoice #</th>' +
+              '<th class="col-num fin-sub-head fin-sub-old">Amount</th>' +
               '<th class="col-center fin-sub-head fin-sub-new fin-sub-inv">Invoice #</th>' +
               '<th class="col-num fin-sub-head fin-sub-new">Amount</th>' +
             '</tr>' +
@@ -354,8 +354,8 @@ window.FinancialsModule = (function () {
               return '<tr>' +
                 '<td data-label="Contractor">' + escHtml(r.name) + '</td>' +
                 '<td class="col-center" data-label="Tax"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
-                '<td class="col-center fin-inv-no" data-label="Old Inv#">'             + (isInHouse ? dash : escHtml(invOldStr)) + '</td>' +
-                '<td class="currency" data-label="Old Amount">'                        + (isInHouse ? dash : fmt(r.c2Old))       + '</td>' +
+                '<td class="col-center fin-inv-no fin-col-old" data-label="Old Inv#">'             + (isInHouse ? dash : escHtml(invOldStr)) + '</td>' +
+                '<td class="currency fin-col-old" data-label="Old Amount">'                        + (isInHouse ? dash : fmt(r.c2Old))       + '</td>' +
                 '<td class="col-center fin-inv-no fin-col-new" data-label="New Inv#">' + (isInHouse ? dash : escHtml(invNewStr)) + '</td>' +
                 '<td class="currency fin-col-new" data-label="New Amount">'            + (isInHouse ? dash : fmt(r.c2New))       + '</td>' +
               '</tr>';
@@ -366,7 +366,7 @@ window.FinancialsModule = (function () {
               '<td><strong>Total</strong></td>' +
               '<td></td>' +
               '<td></td>' +
-              '<td class="currency"><strong>' + fmt(totC2Old) + '</strong></td>' +
+              '<td class="currency fin-col-old"><strong>' + fmt(totC2Old) + '</strong></td>' +
               '<td></td>' +
               '<td class="currency fin-col-new"><strong>' + fmt(totC2New) + '</strong></td>' +
             '</tr>' +

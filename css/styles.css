@@ -636,6 +636,10 @@ th.fin-sub-head {
   padding-top: .35rem;
   padding-bottom: .35rem;
 }
+th.fin-sub-old,
+td.fin-col-old {
+  background: #f0fdf4;
+}
 th.fin-sub-new,
 td.fin-col-new {
   background: #eff6ff;
