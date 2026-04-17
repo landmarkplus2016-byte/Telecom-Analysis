@@ -52,12 +52,12 @@ window.FinancialsModule = (function () {
     return { totalTaxed: totalTaxed, lmpTaxed: lmpTaxed, contractorTaxed: contractorTaxed };
   }
 
-  /* Badge label: contractor tax rate shown in table */
+  /* Contractor-only tax rate for table (just the contractor portion rate) */
   function contractorTaxLabel(contractor) {
     var c = String(contractor || '').trim().toLowerCase();
-    if (c === 'in-house')      return '14% / —';
-    if (c === 'upper telecom') return '14% / 13%';
-    return '14% / 11%';
+    if (c === 'in-house')      return '14%';
+    if (c === 'upper telecom') return '13%';
+    return '11%';
   }
 
   /* Parse "DD/MM/YYYY" → {day, month, year} or null */
@@ -296,6 +296,17 @@ window.FinancialsModule = (function () {
       totC2Old  += r.c2Old;    totC2New  += r.c2New;
     });
 
+    /* Also refresh contractor datalist to match current VF invoice filter */
+    var ctrDL = document.getElementById('fin-ctr-invoice-datalist');
+    if (ctrDL) {
+      var ctrSrc = state.vfInvoiceNo
+        ? _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === state.vfInvoiceNo.trim(); })
+        : _data;
+      ctrDL.innerHTML = getCtrInvoiceNumbers(ctrSrc).map(function (v) {
+        return '<option value="' + escHtml(v) + '">';
+      }).join('');
+    }
+
     container.innerHTML =
       /* 3 KPI cards — value shows total, subtitle shows Old / New breakdown */
       '<div class="kpi-grid kpi-grid-3">' +
@@ -313,23 +324,24 @@ window.FinancialsModule = (function () {
                 'Old: ' + fmt(totC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(totC2New)) +
       '</div>' +
 
-      /* Contractor table — LMP and Contractor Portion only with Old/New splits */
+      /* Contractor table — 3-level header, Contractor Portion only */
       '<div class="table-container table-bordered">' +
         '<table class="data-table fin-table-responsive">' +
           '<thead>' +
             '<tr>' +
-              '<th rowspan="2">Contractor</th>' +
-              '<th rowspan="2" class="col-center">Tax (Total / Contractor)</th>' +
-              '<th colspan="2" class="col-center">LMP Portion taxed (EGP)</th>' +
+              '<th rowspan="3">Contractor</th>' +
+              '<th rowspan="3" class="col-center">Tax</th>' +
               '<th colspan="4" class="col-center">Contractor Portion taxed (EGP)</th>' +
             '</tr>' +
             '<tr>' +
-              '<th class="col-num fin-sub-head">Old</th>' +
-              '<th class="col-num fin-sub-head fin-sub-new">New</th>' +
-              '<th class="col-center fin-sub-head fin-sub-inv">Old Inv#</th>' +
-              '<th class="col-num fin-sub-head">Old</th>' +
-              '<th class="col-center fin-sub-head fin-sub-new fin-sub-inv">New Inv#</th>' +
-              '<th class="col-num fin-sub-head fin-sub-new">New</th>' +
+              '<th colspan="2" class="col-center fin-sub-head">Old</th>' +
+              '<th colspan="2" class="col-center fin-sub-head fin-sub-new">New</th>' +
+            '</tr>' +
+            '<tr>' +
+              '<th class="col-center fin-sub-head fin-sub-inv">Invoice #</th>' +
+              '<th class="col-num fin-sub-head">Amount</th>' +
+              '<th class="col-center fin-sub-head fin-sub-new fin-sub-inv">Invoice #</th>' +
+              '<th class="col-num fin-sub-head fin-sub-new">Amount</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody>' +
@@ -338,15 +350,14 @@ window.FinancialsModule = (function () {
               var isInHouse = String(r.name).trim().toLowerCase() === 'in-house';
               var invOldStr = Object.keys(r.invOld).sort().join(', ') || '—';
               var invNewStr = Object.keys(r.invNew).sort().join(', ') || '—';
+              var dash      = '<span class="text-muted">—</span>';
               return '<tr>' +
                 '<td data-label="Contractor">' + escHtml(r.name) + '</td>' +
                 '<td class="col-center" data-label="Tax"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
-                '<td class="currency" data-label="LMP Old">'             + fmt(r.lmpOld) + '</td>' +
-                '<td class="currency fin-col-new" data-label="LMP New">' + fmt(r.lmpNew) + '</td>' +
-                '<td class="col-center fin-inv-no" data-label="Old Inv#">'             + (isInHouse ? '<span class="text-muted">—</span>' : escHtml(invOldStr)) + '</td>' +
-                '<td class="currency" data-label="Contractor Old">'                    + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2Old)) + '</td>' +
-                '<td class="col-center fin-inv-no fin-col-new" data-label="New Inv#">' + (isInHouse ? '<span class="text-muted">—</span>' : escHtml(invNewStr)) + '</td>' +
-                '<td class="currency fin-col-new" data-label="Contractor New">'        + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2New)) + '</td>' +
+                '<td class="col-center fin-inv-no" data-label="Old Inv#">'             + (isInHouse ? dash : escHtml(invOldStr)) + '</td>' +
+                '<td class="currency" data-label="Old Amount">'                        + (isInHouse ? dash : fmt(r.c2Old))       + '</td>' +
+                '<td class="col-center fin-inv-no fin-col-new" data-label="New Inv#">' + (isInHouse ? dash : escHtml(invNewStr)) + '</td>' +
+                '<td class="currency fin-col-new" data-label="New Amount">'            + (isInHouse ? dash : fmt(r.c2New))       + '</td>' +
               '</tr>';
             }).join('') +
           '</tbody>' +
@@ -354,12 +365,10 @@ window.FinancialsModule = (function () {
             '<tr class="table-total-row">' +
               '<td><strong>Total</strong></td>' +
               '<td></td>' +
-              '<td class="currency"><strong>' + fmt(totLmpOld) + '</strong></td>' +
-              '<td class="currency fin-col-new"><strong>' + fmt(totLmpNew) + '</strong></td>' +
               '<td></td>' +
-              '<td class="currency"><strong>' + fmt(totC2Old)  + '</strong></td>' +
+              '<td class="currency"><strong>' + fmt(totC2Old) + '</strong></td>' +
               '<td></td>' +
-              '<td class="currency fin-col-new"><strong>' + fmt(totC2New)  + '</strong></td>' +
+              '<td class="currency fin-col-new"><strong>' + fmt(totC2New) + '</strong></td>' +
             '</tr>' +
           '</tfoot>' +
         '</table>' +
