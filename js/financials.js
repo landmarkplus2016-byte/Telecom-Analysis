@@ -317,7 +317,6 @@ window.FinancialsModule = (function () {
           '<thead>' +
             '<tr>' +
               '<th rowspan="2">Contractor</th>' +
-              '<th rowspan="2">Contractor Invoice #</th>' +
               '<th rowspan="2" class="col-center">Tax (Total / Contractor)</th>' +
               '<th colspan="2" class="col-center">LMP Portion taxed (EGP)</th>' +
               '<th colspan="2" class="col-center">Contractor Portion taxed (EGP)</th>' +
@@ -333,21 +332,25 @@ window.FinancialsModule = (function () {
             rows.map(function (r) {
               var taxBadge  = contractorTaxLabel(r.name);
               var isInHouse = String(r.name).trim().toLowerCase() === 'in-house';
+              var hasInv    = r.invoiceNo && r.invoiceNo !== '—';
+              var invLabel  = hasInv ? '<span class="fin-inv-label">' + escHtml(r.invoiceNo) + '</span>' : '';
+              var c2OldCell = isInHouse ? '<span class="text-muted">—</span>'
+                            : (invLabel + '<span class="fin-inv-amount">' + fmt(r.c2Old) + '</span>');
+              var c2NewCell = isInHouse ? '<span class="text-muted">—</span>'
+                            : (invLabel + '<span class="fin-inv-amount">' + fmt(r.c2New) + '</span>');
               return '<tr>' +
                 '<td data-label="Contractor">' + escHtml(r.name) + '</td>' +
-                '<td data-label="Contractor Invoice #">' + escHtml(r.invoiceNo) + '</td>' +
                 '<td class="col-center" data-label="Tax"><span class="badge badge-muted">' + taxBadge + '</span></td>' +
-                '<td class="currency" data-label="LMP Old">'          + fmt(r.lmpOld)    + '</td>' +
-                '<td class="currency fin-col-new" data-label="LMP New">'          + fmt(r.lmpNew)    + '</td>' +
-                '<td class="currency" data-label="Contractor Old">'   + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2Old))  + '</td>' +
-                '<td class="currency fin-col-new" data-label="Contractor New">'   + (isInHouse ? '<span class="text-muted">—</span>' : fmt(r.c2New))  + '</td>' +
+                '<td class="currency" data-label="LMP Old">'                    + fmt(r.lmpOld) + '</td>' +
+                '<td class="currency fin-col-new" data-label="LMP New">'        + fmt(r.lmpNew) + '</td>' +
+                '<td class="currency fin-inv-cell" data-label="Contractor Old">'          + c2OldCell + '</td>' +
+                '<td class="currency fin-col-new fin-inv-cell" data-label="Contractor New">' + c2NewCell + '</td>' +
               '</tr>';
             }).join('') +
           '</tbody>' +
           '<tfoot>' +
             '<tr class="table-total-row">' +
               '<td><strong>Total</strong></td>' +
-              '<td></td>' +
               '<td></td>' +
               '<td class="currency"><strong>' + fmt(totLmpOld) + '</strong></td>' +
               '<td class="currency fin-col-new"><strong>' + fmt(totLmpNew) + '</strong></td>' +
@@ -409,7 +412,10 @@ window.FinancialsModule = (function () {
       return '<option value="' + escHtml(v) + '">';
     }).join('');
 
-    var ctrInvoiceNums  = getCtrInvoiceNumbers(_data);
+    var ctrDataSource = state.vfInvoiceNo
+      ? _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === state.vfInvoiceNo.trim(); })
+      : _data;
+    var ctrInvoiceNums  = getCtrInvoiceNumbers(ctrDataSource);
     var ctrDatalistOpts = ctrInvoiceNums.map(function (v) {
       return '<option value="' + escHtml(v) + '">';
     }).join('');
