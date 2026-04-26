@@ -69,7 +69,13 @@
       </li>
       <li role="none">
         <a href="#" class="nav-item" data-section="financials" role="menuitem">
-          💰 Invoices
+          💰 TX-RF Invoice
+        </a>
+      </li>
+
+      <li role="none">
+        <a href="#" class="nav-item" data-section="poc" role="menuitem">
+          🗄️ POC Invoices
         </a>
       </li>
 
@@ -125,8 +131,13 @@
     </section>
 
     <!-- ── Financials ── -->
-    <section id="section-financials" class="section" aria-label="Invoices">
+    <section id="section-financials" class="section" aria-label="TX-RF Invoice">
       <div id="financials-content"></div>
+    </section>
+
+    <!-- ── POC Invoices ── -->
+    <section id="section-poc" class="section" aria-label="POC Invoices" >
+      <div id="poc-content"></div>
     </section>
 
     <!-- ── Admin ── -->
@@ -146,10 +157,12 @@
   <!-- App modules (load order enforced) -->
   <script src="js/config.js"></script>
   <script src="js/parser.js"></script>
+  <script src="js/parser2.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/tasks.js"></script>
   <script src="js/financials.js"></script>
+  <script src="js/poc.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/dropbox.js"></script>
   <script src="js/pwa.js"></script>

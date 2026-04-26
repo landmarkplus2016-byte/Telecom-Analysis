@@ -214,17 +214,13 @@ window.FinancialsModule = (function () {
 
   var MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  /* ── Filter logic ── */
+  /* ── Filter logic (exact match on invoice numbers) ── */
   function applyFilters() {
     return _data.filter(function (r) {
-      if (state.vfInvoiceNo) {
-        if ((r.vfInvoiceNo || '').toLowerCase().indexOf(state.vfInvoiceNo.toLowerCase()) === -1) return false;
-      }
+      if (state.vfInvoiceNo  && String(r.vfInvoiceNo  || '').trim() !== state.vfInvoiceNo.trim())  return false;
       if (!dateMatchesFilter(r.vfInvoiceSubmissionDate, state.vfSubmitYear,  state.vfSubmitMonth,  state.vfSubmitDay))  return false;
       if (!dateMatchesFilter(r.cashReceivedDate,        state.cashRcvYear,   state.cashRcvMonth,   state.cashRcvDay))   return false;
-      if (state.ctrInvoiceNo) {
-        if ((r.ctrInvoiceNo || '').toLowerCase().indexOf(state.ctrInvoiceNo.toLowerCase()) === -1) return false;
-      }
+      if (state.ctrInvoiceNo && String(r.ctrInvoiceNo || '').trim() !== state.ctrInvoiceNo.trim()) return false;
       if (!dateMatchesFilter(r.ctrInvoiceSubmitDate,    state.ctrSubmitYear, state.ctrSubmitMonth, state.ctrSubmitDay)) return false;
       return true;
     });
@@ -286,6 +282,7 @@ window.FinancialsModule = (function () {
 
     var rows = Object.keys(cmap)
       .map(function (k) { return cmap[k]; })
+      .filter(function (r) { return r.name.trim().toLowerCase() !== 'in-house'; })
       .sort(function (a, b) { return b.amount - a.amount; });
 
     /* Grand old/new totals for tfoot */
@@ -387,12 +384,12 @@ window.FinancialsModule = (function () {
 
     if (!_data.length) {
       el.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div>' +
-        '<p>No data yet &mdash; tap <strong>Sync</strong> to load</p></div>';
+        '<p>No TX-RF data yet &mdash; tap <strong>Sync</strong> to load</p></div>';
       return;
     }
 
     el.innerHTML =
-      '<div class="section-header"><h2>💰 Invoices</h2></div>' +
+      '<div class="section-header"><h2>💰 TX-RF Invoice</h2></div>' +
 
       /* Filter card — built once, never rebuilt on filter changes */
       '<div class="card fin-filter-card">' +
@@ -553,6 +550,29 @@ window.FinancialsModule = (function () {
     sel.disabled  = !(year && month);
   }
 
+  /* Update date select elements in-place from current state — avoids
+     calling render() which would rebuild the filter bar and lose focus. */
+  function syncDateSelects() {
+    var el;
+    el = document.getElementById('fin-vs-year');  if (el) el.value = state.vfSubmitYear;
+    refreshMonthSelect('fin-vs-month', 'vfInvoiceSubmissionDate', state.vfSubmitYear);
+    el = document.getElementById('fin-vs-month'); if (el) el.value = state.vfSubmitMonth;
+    refreshDaySelect('fin-vs-day', 'vfInvoiceSubmissionDate', state.vfSubmitYear, state.vfSubmitMonth);
+    el = document.getElementById('fin-vs-day');   if (el) el.value = state.vfSubmitDay;
+
+    el = document.getElementById('fin-cr-year');  if (el) el.value = state.cashRcvYear;
+    refreshMonthSelect('fin-cr-month', 'cashReceivedDate', state.cashRcvYear);
+    el = document.getElementById('fin-cr-month'); if (el) el.value = state.cashRcvMonth;
+    refreshDaySelect('fin-cr-day', 'cashReceivedDate', state.cashRcvYear, state.cashRcvMonth);
+    el = document.getElementById('fin-cr-day');   if (el) el.value = state.cashRcvDay;
+
+    el = document.getElementById('fin-cs-year');  if (el) el.value = state.ctrSubmitYear;
+    refreshMonthSelect('fin-cs-month', 'ctrInvoiceSubmitDate', state.ctrSubmitYear);
+    el = document.getElementById('fin-cs-month'); if (el) el.value = state.ctrSubmitMonth;
+    refreshDaySelect('fin-cs-day', 'ctrInvoiceSubmitDate', state.ctrSubmitYear, state.ctrSubmitMonth);
+    el = document.getElementById('fin-cs-day');   if (el) el.value = state.ctrSubmitDay;
+  }
+
   /* ── Active filter count badge ── */
   function updateFilterBadge() {
     var badge = document.getElementById('fin-filter-badge');
@@ -590,12 +610,9 @@ window.FinancialsModule = (function () {
     var inv = document.getElementById('fin-vf-invoice');
     if (inv) inv.addEventListener('input', function (e) {
       state.vfInvoiceNo = e.target.value;
-      var exactMatch = autoFillDates(state.vfInvoiceNo);
-      if (exactMatch) {
-        render(); // full rebuild so year/month/day selects reflect auto-filled dates
-      } else {
-        updateFilterBadge(); renderResults();
-      }
+      if (autoFillDates(state.vfInvoiceNo)) syncDateSelects();
+      updateFilterBadge();
+      renderResults();
     });
 
     /* VF Invoice Submission Date */
@@ -650,12 +667,13 @@ window.FinancialsModule = (function () {
     var ctrInv = document.getElementById('fin-ctr-invoice');
     if (ctrInv) ctrInv.addEventListener('input', function (e) {
       state.ctrInvoiceNo = e.target.value;
-      var exactMatch = autoFillCtrDates(state.ctrInvoiceNo);
-      if (exactMatch) {
-        render();
-      } else {
-        updateFilterBadge(); renderResults();
+      if (autoFillCtrDates(state.ctrInvoiceNo)) {
+        var vfEl = document.getElementById('fin-vf-invoice');
+        if (vfEl) vfEl.value = state.vfInvoiceNo;
+        syncDateSelects();
       }
+      updateFilterBadge();
+      renderResults();
     });
 
     /* Contractor Invoice Subm Date */

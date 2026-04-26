@@ -14,23 +14,33 @@ window.AdminModule = (function () {
     var el = document.getElementById('admin-content');
     if (!el) return;
 
-    var cfg         = window.Config || {};
-    var currentUrl  = cfg.fileUrl || '';
-    var cacheKey    = cfg.cacheKey    || 'telecom_data_cache';
-    var lastSyncKey = cfg.lastSyncKey || 'telecom_last_sync';
+    var cfg = window.Config || {};
 
-    var cachedRaw  = localStorage.getItem(cacheKey);
+    var currentUrl  = cfg.fileUrl  || '';
+    var currentUrl2 = cfg.fileUrl2 || '';
+
+    var cacheKey     = cfg.cacheKey     || 'telecom_data_cache';
+    var lastSyncKey  = cfg.lastSyncKey  || 'telecom_last_sync';
+    var cacheKey2    = cfg.cacheKey2    || 'telecom_data_cache_2';
+    var lastSyncKey2 = cfg.lastSyncKey2 || 'telecom_last_sync_2';
+
     var recordCount = 0;
-    try { if (cachedRaw) recordCount = JSON.parse(cachedRaw).length; } catch (e) {}
-    var lastSync = localStorage.getItem(lastSyncKey) || '';
-    var syncDisplay = lastSync ? new Date(lastSync).toLocaleString() : 'Never';
+    try { var r1 = localStorage.getItem(cacheKey);  if (r1) recordCount  = JSON.parse(r1).length; } catch (e) {}
+
+    var recordCount2 = 0;
+    try { var r2 = localStorage.getItem(cacheKey2); if (r2) recordCount2 = JSON.parse(r2).length; } catch (e) {}
+
+    var lastSync  = localStorage.getItem(lastSyncKey)  || '';
+    var lastSync2 = localStorage.getItem(lastSyncKey2) || '';
+    var syncDisplay  = lastSync  ? new Date(lastSync).toLocaleString()  : 'Never';
+    var syncDisplay2 = lastSync2 ? new Date(lastSync2).toLocaleString() : 'Never';
 
     el.innerHTML =
       '<div class="section-header"><h2>⚙️ Admin Panel</h2><p class="section-sub">Hidden from normal users</p></div>' +
 
-      // Card 1 — Dropbox URL
+      // Card 1 — Invoicing Track
       '<div class="card admin-card">' +
-        '<h3>Dropbox Configuration</h3>' +
+        '<h3>Dropbox Configuration — Invoicing Track</h3>' +
         '<label class="field-label" for="admin-url-input">Dropbox File URL (dl=1 link)</label>' +
         '<input type="text" id="admin-url-input" class="text-input" placeholder="https://www.dropbox.com/…?dl=1" value="' + escHtml(currentUrl) + '">' +
         '<div class="admin-status">' +
@@ -39,11 +49,7 @@ window.AdminModule = (function () {
             : '<span class="badge badge-danger">&#10007; Not configured</span>') +
         '</div>' +
         '<button id="admin-save-url" class="btn btn-primary" style="margin-top:0.75rem">Save URL</button>' +
-      '</div>' +
-
-      // Card 2 — Generate Config URL
-      '<div class="card admin-card">' +
-        '<h3>Generate Config URL</h3>' +
+        '<hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">' +
         '<p class="admin-hint">Share this URL with your team. They open it once and the app configures automatically on their device.</p>' +
         '<button id="admin-gen-url" class="btn btn-primary">Generate Config URL</button>' +
         '<div id="admin-cfg-output" style="display:none;margin-top:1rem">' +
@@ -54,13 +60,39 @@ window.AdminModule = (function () {
         '</div>' +
       '</div>' +
 
-      // Card 3 — Cache
+      // Card 2 — BH Sites
+      '<div class="card admin-card">' +
+        '<h3>Dropbox Configuration — BH Sites</h3>' +
+        '<label class="field-label" for="admin-url2-input">Dropbox File URL (dl=1 link)</label>' +
+        '<input type="text" id="admin-url2-input" class="text-input" placeholder="https://www.dropbox.com/…?dl=1" value="' + escHtml(currentUrl2) + '">' +
+        '<div class="admin-status">' +
+          (currentUrl2
+            ? '<span class="badge badge-success">&#10003; Configured</span>'
+            : '<span class="badge badge-danger">&#10007; Not configured</span>') +
+        '</div>' +
+        '<button id="admin-save-url2" class="btn btn-primary" style="margin-top:0.75rem">Save URL</button>' +
+        '<hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">' +
+        '<p class="admin-hint">Share this URL with your team. They open it once and the app configures automatically on their device.</p>' +
+        '<button id="admin-gen-url2" class="btn btn-primary">Generate Config URL</button>' +
+        '<div id="admin-cfg-output2" style="display:none;margin-top:1rem">' +
+          '<div class="copy-row">' +
+            '<input type="text" id="admin-cfg-url2" class="text-input" readonly>' +
+            '<button id="admin-copy-url2" class="btn btn-outline">Copy</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Card 3 — Cache Management
       '<div class="card admin-card">' +
         '<h3>Cache Management</h3>' +
-        '<p>Records in cache: <strong>' + recordCount.toLocaleString() + '</strong></p>' +
-        '<p>Last sync: <strong>' + escHtml(syncDisplay) + '</strong></p>' +
+        '<p style="font-weight:600;margin-bottom:0.25rem">Invoicing Track</p>' +
+        '<p style="margin:0 0 0.25rem">Records in cache: <strong>' + recordCount.toLocaleString() + '</strong></p>' +
+        '<p style="margin:0 0 1rem">Last sync: <strong>' + escHtml(syncDisplay) + '</strong></p>' +
+        '<p style="font-weight:600;margin-bottom:0.25rem">BH Sites</p>' +
+        '<p style="margin:0 0 0.25rem">Records in cache: <strong>' + recordCount2.toLocaleString() + '</strong></p>' +
+        '<p style="margin:0 0 1rem">Last sync: <strong>' + escHtml(syncDisplay2) + '</strong></p>' +
         '<div class="btn-row">' +
-          '<button id="admin-clear-cache" class="btn btn-outline">Clear Cache</button>' +
+          '<button id="admin-clear-cache" class="btn btn-outline">Clear All Cache</button>' +
           '<button id="admin-force-sync"  class="btn btn-primary">Force Sync Now</button>' +
         '</div>' +
       '</div>' +
@@ -74,44 +106,71 @@ window.AdminModule = (function () {
 
     // --- Event bindings ---
 
+    // Invoicing Track — save
     document.getElementById('admin-save-url').addEventListener('click', function () {
       var url = document.getElementById('admin-url-input').value.trim();
       if (!url) { window.showToast('Please enter a URL.', 'error'); return; }
       localStorage.setItem('telecom_file_url', url);
       window.Config.refresh();
-      window.showToast('URL saved successfully!', 'success');
-      render(); // re-render to update status badge
-      if (typeof updateConnectionStatus === 'function') updateConnectionStatus();
+      window.showToast('Invoicing Track URL saved!', 'success');
+      render();
     });
 
+    // Invoicing Track — generate config URL
     document.getElementById('admin-gen-url').addEventListener('click', function () {
       var url = (window.Config && window.Config.fileUrl) || '';
-      if (!url) { window.showToast('Save a URL first before generating a config link.', 'error'); return; }
-      var encoded  = btoa(url);
-      var cfgUrl   = window.location.origin + window.location.pathname + '?cfg=' + encoded;
+      if (!url) { window.showToast('Save an Invoicing Track URL first.', 'error'); return; }
+      var cfgUrl   = window.location.origin + window.location.pathname + '?cfg=' + btoa(url);
       var output   = document.getElementById('admin-cfg-output');
-      var urlInput = document.getElementById('admin-cfg-url');
-      output.style.display   = 'block';
-      urlInput.value         = cfgUrl;
+      output.style.display = 'block';
+      document.getElementById('admin-cfg-url').value = cfgUrl;
     });
 
     document.getElementById('admin-copy-url').addEventListener('click', function () {
       var input = document.getElementById('admin-cfg-url');
       if (!input || !input.value) return;
       navigator.clipboard.writeText(input.value)
-        .then(function () { window.showToast('Config URL copied to clipboard!', 'success'); })
-        .catch(function () {
-          input.select();
-          document.execCommand('copy');
-          window.showToast('Copied!', 'success');
-        });
+        .then(function () { window.showToast('Config URL copied!', 'success'); })
+        .catch(function () { input.select(); document.execCommand('copy'); window.showToast('Copied!', 'success'); });
     });
 
+    // BH Sites — save
+    document.getElementById('admin-save-url2').addEventListener('click', function () {
+      var url = document.getElementById('admin-url2-input').value.trim();
+      if (!url) { window.showToast('Please enter a URL.', 'error'); return; }
+      localStorage.setItem('telecom_file_url_2', url);
+      window.Config.refresh();
+      window.showToast('BH Sites URL saved!', 'success');
+      render();
+    });
+
+    // BH Sites — generate config URL
+    document.getElementById('admin-gen-url2').addEventListener('click', function () {
+      var url = (window.Config && window.Config.fileUrl2) || '';
+      if (!url) { window.showToast('Save a BH Sites URL first.', 'error'); return; }
+      var cfgUrl   = window.location.origin + window.location.pathname + '?cfg2=' + btoa(url);
+      var output   = document.getElementById('admin-cfg-output2');
+      output.style.display = 'block';
+      document.getElementById('admin-cfg-url2').value = cfgUrl;
+    });
+
+    document.getElementById('admin-copy-url2').addEventListener('click', function () {
+      var input = document.getElementById('admin-cfg-url2');
+      if (!input || !input.value) return;
+      navigator.clipboard.writeText(input.value)
+        .then(function () { window.showToast('BH Sites config URL copied!', 'success'); })
+        .catch(function () { input.select(); document.execCommand('copy'); window.showToast('Copied!', 'success'); });
+    });
+
+    // Cache — clear all
     document.getElementById('admin-clear-cache').addEventListener('click', function () {
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(lastSyncKey);
-      window.AppData = [];
-      window.showToast('Cache cleared.', 'info');
+      localStorage.removeItem(cacheKey2);
+      localStorage.removeItem(lastSyncKey2);
+      window.AppData  = [];
+      window.AppData2 = [];
+      window.showToast('All cache cleared.', 'info');
       render();
     });
 

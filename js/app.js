@@ -7,10 +7,11 @@
   'use strict';
 
   /* ── Global app data ── */
-  window.AppData = [];
+  window.AppData  = [];
+  window.AppData2 = [];
 
   /* ── All sections ── */
-  var ALL_SECTIONS = ['dashboard', 'tasks', 'financials', 'admin'];
+  var ALL_SECTIONS = ['dashboard', 'tasks', 'financials', 'poc', 'admin'];
   var currentSection = 'dashboard';
 
   /* ── Admin reveal state ── */
@@ -74,6 +75,7 @@
       case 'dashboard':  window.Dashboard       && window.Dashboard.render();       break;
       case 'tasks':      window.TasksModule      && window.TasksModule.render();     break;
       case 'financials': window.FinancialsModule && window.FinancialsModule.render(); break;
+      case 'poc':        window.POCModule        && window.POCModule.render();       break;
       case 'admin':      window.AdminModule      && window.AdminModule.render();     break;
     }
   }
@@ -115,16 +117,24 @@
   function handleConfigParam() {
     var params = new URLSearchParams(window.location.search);
     var cfg    = params.get('cfg');
-    if (!cfg) return;
+    var cfg2   = params.get('cfg2');
+    if (!cfg && !cfg2) return;
 
     try {
-      var url = atob(cfg);
-      if (!url) throw new Error('Empty URL');
-      localStorage.setItem('telecom_file_url', url);
+      if (cfg) {
+        var url = atob(cfg);
+        if (!url) throw new Error('Empty URL');
+        localStorage.setItem('telecom_file_url', url);
+      }
+      if (cfg2) {
+        var url2 = atob(cfg2);
+        if (!url2) throw new Error('Empty URL');
+        localStorage.setItem('telecom_file_url_2', url2);
+      }
       window.Config.refresh();
-      // Remove from URL — no history entry
       history.replaceState(null, '', window.location.pathname + window.location.hash);
-      window.showToast('✅ App configured successfully! You can now Sync.', 'success');
+      var label = cfg && cfg2 ? 'Both files configured' : cfg ? 'Invoicing Track configured' : 'BH Sites configured';
+      window.showToast('✅ ' + label + '! You can now Sync.', 'success');
       updateConnectionStatus();
     } catch (e) {
       window.showToast('Invalid configuration link.', 'error');
@@ -139,6 +149,17 @@
       var raw = localStorage.getItem(window.Config.cacheKey);
       if (raw) {
         window.AppData = JSON.parse(raw);
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function loadCache2() {
+    try {
+      var raw = localStorage.getItem(window.Config.cacheKey2);
+      if (raw) {
+        window.AppData2 = JSON.parse(raw);
         return true;
       }
     } catch (e) {}
@@ -210,7 +231,10 @@
     if (!btn) return;
 
     btn.addEventListener('click', async function () {
-      if (!window.Config || !window.Config.fileUrl) {
+      var hasFile1 = !!(window.Config && window.Config.fileUrl);
+      var hasFile2 = !!(window.Config && window.Config.fileUrl2);
+
+      if (!hasFile1 && !hasFile2) {
         window.showToast('App not configured. Contact your administrator.', 'error');
         return;
       }
@@ -219,19 +243,37 @@
       btn.classList.add('spinning');
       window.showLoading();
 
+      var results = [];
+
       try {
-        await window.DropboxModule.fetchFile();
-        window.renderAll();
-        updateSyncTime();
-        window.showToast('Synced ' + window.AppData.length.toLocaleString() + ' tasks successfully!', 'success');
-      } catch (err) {
-        console.error('[TA Sync]', err);
-        window.showToast('Sync failed: ' + (err.message || 'Network error'), 'error');
-        // Fall back to cache if available
-        if (!window.AppData.length) loadCache();
-        if (window.AppData.length) {
+        if (hasFile1) {
+          try {
+            await window.DropboxModule.fetchFile();
+            results.push(window.AppData.length.toLocaleString() + ' tasks');
+          } catch (err) {
+            console.error('[TA Sync File1]', err);
+            window.showToast('Invoicing Track sync failed: ' + (err.message || 'Network error'), 'error');
+            if (!window.AppData.length) loadCache();
+            if (window.AppData.length) window.showToast('Showing cached Invoicing Track data.', 'info');
+          }
+        }
+
+        if (hasFile2) {
+          try {
+            await window.DropboxModule.fetchFile2();
+            results.push(window.AppData2.length.toLocaleString() + ' BH records');
+          } catch (err) {
+            console.error('[TA Sync File2]', err);
+            window.showToast('BH Sites sync failed: ' + (err.message || 'Network error'), 'error');
+            if (!window.AppData2.length) loadCache2();
+            if (window.AppData2.length) window.showToast('Showing cached BH Sites data.', 'info');
+          }
+        }
+
+        if (results.length) {
           window.renderAll();
-          window.showToast('Showing cached data.', 'info');
+          updateSyncTime();
+          window.showToast('Synced ' + results.join(' + ') + ' successfully!', 'success');
         }
       } finally {
         btn.disabled = false;
@@ -247,6 +289,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     handleConfigParam();
     loadCache();
+    loadCache2();
     initDrawer();
     initSync();
     updateConnectionStatus();
