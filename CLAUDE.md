@@ -4,11 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this app is
 
-**Telecom Analysis** — a static, zero-build web app for the Telecom Department. It pulls a macro-enabled Excel file (`Total_Task_Tracking_New_2026.xlsm`) from Dropbox, parses the **"Invoicing Track"** sheet, and renders dashboards, task tables, and financial summaries. No server, no npm, no framework — open `index.html` directly in a browser or deploy to GitHub Pages.
+**Telecom Analysis** — a static, zero-build web app for the Telecom Department. It pulls **two separate Excel files** from Dropbox, parses their respective sheets, and renders dashboards, task tables, and financial summaries. No server, no npm, no framework — open `index.html` directly in a browser or deploy to GitHub Pages.
+
+| Source | File | Sheet | Global |
+|---|---|---|---|
+| Invoicing Track | `Total_Task_Tracking_New_2026.xlsm` | `Invoicing Track` | `window.AppData` |
+| BH Sites | `BH Sites-Invoice Tracking` workbook | `POC3 Tracking` | `window.AppData2` |
 
 ## Running the app
 
-Open `index.html` directly in a browser (double-click or `File → Open`). On first launch go to **Settings**, enter a Dropbox Access Token and file path, then hit **Sync**.
+Open `index.html` directly in a browser (double-click or `File → Open`). On first launch go to **Admin** (5-click logo or `#admin` hash), enter each Dropbox URL, then hit **Sync**.
 
 There is no build step, no dev server, and no package manager.
 
@@ -17,8 +22,8 @@ There is no build step, no dev server, and no package manager.
 Scripts must stay in this exact order — each file depends on globals defined by earlier ones:
 
 ```
-config.js → parser.js → charts.js → dashboard.js →
-tasks.js → financials.js → admin.js → dropbox.js → pwa.js → app.js
+config.js → parser.js → parser2.js → charts.js → dashboard.js →
+tasks.js → financials.js → poc.js → admin.js → dropbox.js → pwa.js → app.js
 ```
 
 > `category.js` was removed — the By Category section no longer exists.
@@ -29,27 +34,45 @@ Every JS file exposes exactly one `window.*` object. Never use ES modules (`impo
 
 | Global | Defined in | Purpose |
 |---|---|---|
-| `window.AppData` | `app.js` (init) | The parsed task array — single source of truth for all sections |
+| `window.AppData` | `app.js` (init) | Parsed Invoicing Track rows — source of truth for Dashboard, All Tasks, TX-RF Invoice |
+| `window.AppData2` | `app.js` (init) | Parsed POC3 Tracking rows (raw, keyed by header name) — source of truth for POC Invoices |
 | `window.SettingsModule` | `settings.js` | localStorage R/W for token, path, cache, last-sync |
-| `window.Parser` | `parser.js` | `parseSheet(workbook)` → normalized array |
+| `window.Parser` | `parser.js` | `parseSheet(workbook)` → normalized AppData array |
+| `window.Parser2` | `parser2.js` | `parseSheet(workbook)` → raw AppData2 array |
 | `window.Charts` | `charts.js` | Live Chart.js instances keyed by string |
 | `window.ChartsModule` | `charts.js` | `createPie / createDoughnut / createBar / createHBar / destroyAll` |
 | `window.Dashboard` | `dashboard.js` | `render()` |
 | `window.TasksModule` | `tasks.js` | `render()`, `applyFilters()`, `goToPage(n)` |
 | `window.FinancialsModule` | `financials.js` | `render()` |
-| `window.DropboxModule` | `dropbox.js` | `fetchFile()` → XLSX workbook |
+| `window.POCModule` | `poc.js` | `render()` |
+| `window.DropboxModule` | `dropbox.js` | `fetchFile()` → workbook 1; `fetchFile2()` → workbook 2 |
 | `window.showToast` | `app.js` | `showToast(msg, 'success'|'error'|'info')` |
 
 ## Data flow
 
+### File 1 — Invoicing Track
+
 ```
-Dropbox API v2  →  DropboxModule.fetchFile()  →  XLSX workbook
-                →  Parser.parseSheet()         →  window.AppData[]
-                →  SettingsModule.setCachedData()  (localStorage)
-                →  renderSection()             →  section modules read AppData
+Dropbox URL (telecom_file_url)  →  DropboxModule.fetchFile()   →  XLSX workbook
+                                →  Parser.parseSheet()          →  window.AppData[]
+                                →  localStorage (cacheKey)
+                                →  renderSection()              →  Dashboard / Tasks / TX-RF Invoice
 ```
 
-On page load, `app.js` reads `localStorage` and populates `window.AppData` before calling `Dashboard.render()` — so the app is fully functional offline after the first sync.
+### File 2 — BH Sites
+
+```
+Dropbox URL (telecom_file_url_2)  →  DropboxModule.fetchFile2()  →  XLSX workbook
+                                  →  Parser2.parseSheet()         →  window.AppData2[]  (raw rows)
+                                  →  localStorage (cacheKey2)
+                                  →  renderSection()              →  POC Invoices
+```
+
+On page load, `app.js` calls `loadCache()` and `loadCache2()` from localStorage before any render — so both sections are functional offline after the first sync.
+
+### Sync button behavior
+
+The single Sync button handles both files. If only one URL is configured, it syncs that file and silently skips the other. Toast shows combined result, e.g. `"1,234 tasks + 567 BH records"`. Each file's sync error is reported independently — a failure on one does not block the other.
 
 ## Parser details (parser.js)
 
@@ -65,6 +88,14 @@ On page load, `app.js` reads `localStorage` and populates `window.AppData` befor
 - `contractor2` is parsed as a **number** (`getNum`) — it holds the contractor's EGP portion, not a name
 - `ctrInvoiceNo` is parsed as a string — the contractor's own invoice reference number
 - `ctrInvoiceSubmitDate` is parsed as a formatted date string via `formatDate`
+
+## Parser2 details (parser2.js)
+
+- Target sheet: `"POC3 Tracking"` (case-insensitive fallback)
+- **Header row: auto-detected** — scans the first 30 rows for a row containing the exact string `"Inst Contractor"` (case-insensitive). No fixed row index assumption.
+- Returns raw objects keyed by the header column names as they appear in the sheet.
+- Fully blank rows are skipped.
+- Does **not** normalize or type-cast values — all column detection and business logic is handled in `poc.js`.
 
 ## Chart pattern
 
@@ -120,9 +151,9 @@ All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 
 `render()` builds the filter bar once and writes a `#dash-results` div. Filter changes call `renderResults()` which recomputes KPIs and charts from the filtered subset — filter controls never lose their state or focus.
 
-## Invoices section (financials.js)
+## TX-RF Invoice section (financials.js)
 
-Previously named "Financials". The nav item, section `aria-label`, and `<h2>` heading were all renamed to **Invoices**. The module filename and global (`window.FinancialsModule`) are unchanged.
+Previously named "Financials", then "Invoices". The nav item, section `aria-label`, and `<h2>` heading are now **TX-RF Invoice**. The module filename and global (`window.FinancialsModule`) are unchanged.
 
 ### KPI Cards (3)
 
@@ -138,7 +169,7 @@ Each card shows the total value as the main figure, with an **Old / New breakdow
 
 ### Contractor table
 
-Groups by **contractor** (one row per contractor). Columns:
+Groups by **contractor** (one row per contractor). **In-House is excluded from the table** — its contractor portion is always zero and it clutters the view. In-House amounts are still included in KPI card totals.
 
 | Column | Notes |
 |---|---|
@@ -159,31 +190,33 @@ Invoice numbers (`ctrInvoiceNo`) are collected per contractor per period into `i
 
 VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date**
 
+### Invoice filter behavior
+
+**Exact match** — both VF Invoice # and Contractor Invoice # use strict equality (`===`), not partial match. Users select from a datalist so partial search is not needed, and partial match caused false positives (e.g. searching "22" would show "122", "227").
+
 ### Contractor Invoice # datalist filtering
 
 When a VF Invoice # is active, the Contractor Invoice # datalist shows **only the contractor invoices linked to that VF invoice**. This is enforced in two places:
 
-1. **`buildFilterHTML()`** — filters `_data` by exact `vfInvoiceNo` match when building the contractor datalist (applies on full `render()` calls, i.e. exact VF invoice match or clear).
-2. **`renderResults()`** — also refreshes the contractor datalist `innerHTML` on every partial filter change, so the datalist stays in sync even when `render()` is not triggered.
+1. **`buildFilterHTML()`** — filters `_data` by exact `vfInvoiceNo` match when building the contractor datalist.
+2. **`renderResults()`** — also refreshes the contractor datalist `innerHTML` on every filter change, so the datalist stays in sync.
 
 ### Auto-fill behavior
 
-Two invoice auto-fill chains exist:
+Two invoice auto-fill chains exist. Both use `syncDateSelects()` instead of `render()` to update the date dropdowns in-place — this preserves focus on the invoice input (calling `render()` would destroy and recreate the input element, losing the cursor).
 
 **VF Invoice # selected (exact match):**
 - Auto-fills VF Invoice Submission Date
 - Auto-fills Cash Received Date
 - Filters Contractor Invoice # datalist to only related invoices
-- Triggers full `render()` to rebuild date selects
 
 **Contractor Invoice # selected (exact match):**
 - Auto-fills Contractor Invoice Subm Date
-- Auto-fills VF Invoice # (linked from same row)
+- Auto-fills VF Invoice # (linked from same row) — also updates the VF Invoice # input value in the DOM
 - Auto-fills VF Invoice Submission Date
 - Auto-fills Cash Received Date
-- Triggers full `render()` to rebuild all date selects
 
-Partial/typed values (no exact match) filter in-place via `renderResults()` without rebuilding the filter bar.
+**`syncDateSelects()`** — updates all six date `<select>` elements (year/month/day for each date filter) from the current `state` object, calling `refreshMonthSelect` / `refreshDaySelect` to repopulate options, then setting `.value` to match state. Defined in both `financials.js` and `poc.js` with their respective element ID prefixes (`fin-` / `poc-`).
 
 ### Parser fields for Contractor Invoice
 
@@ -191,6 +224,68 @@ Partial/typed values (no exact match) filter in-place via `renderResults()` with
 |---|---|---|
 | `ctrInvoiceNo` | `Contractor Invoice #` | string |
 | `ctrInvoiceSubmitDate` | `Contractor Invoice Subm Date` | formatted date string |
+
+## POC Invoices section (poc.js)
+
+Reads `window.AppData2` (raw POC3 Tracking rows), expands each source row into two output rows (Installation + Migration), then renders the same KPI + filter + contractor table structure as the TX-RF Invoice section.
+
+### Column detection
+
+`poc.js` does **pattern matching** on the raw object key names from `AppData2`. No fixed column indices. Key patterns:
+
+| Logical field | Match rule |
+|---|---|
+| `jobCode` | `=== 'job code'` |
+| `siteId` | `=== 'site id'` |
+| `lineItem` | `=== 'line item'` |
+| `total` | `includes('total amount')` |
+| `instContractor` | `=== 'inst contractor'` |
+| `lmpIns` | `includes('lmp') && includes('ins') && !includes('mig')` |
+| `conIns` | `includes('contractor') && includes('portion') && includes('ins')` |
+| `installDate` | `includes('installation') && includes('date')` |
+| `invoiceIns` | `includes('invoice') && includes('ins') && !includes('contractor')` |
+| `poIns` | `startsWith('po') && !includes('portion') && includes('ins') && !includes('mig')` |
+| `instConInvoice` | `includes('inst') && includes('contractor') && includes('invoice')` |
+| `migrContractor` | `includes('migr') && includes('contractor') && !includes('invoice')` |
+| `lmpMig` | `includes('lmp') && includes('mig')` |
+| `conMig` | `includes('contractor') && includes('portion') && includes('mig')` |
+| `migrDate` | `includes('migration') && includes('date')` |
+| `invoiceMig` | `includes('invoice') && includes('mig') && !includes('contractor')` |
+| `poMig` | `startsWith('po') && !includes('portion') && includes('mig')` |
+| `migrConInvoice` | `includes('migr') && includes('contractor') && includes('invoice')` |
+| `vfSubmitDate` | `includes('vf') && (includes('submit') \|\| includes('submission'))` |
+| `cashReceived` | `includes('cash') && includes('receiv')` |
+| `ctrSubmitDate` | `includes('contractor') && includes('invoice') && (includes('subm') \|\| includes('submit'))` |
+
+Date columns (`vfSubmitDate`, `cashReceived`, `ctrSubmitDate`) may not exist in all sheet versions — if not found, those filters render empty and do nothing.
+
+### Row splitting
+
+Each source row produces **two output rows** with these rules:
+
+- `newTotalPrice = Total Amount / 2` for both rows
+- `taskType` (`"New"` / `"Old"`) is **always derived from `installDate`** — year ≥ 2026 → New — even for the Migration row
+- Both rows carry both `installDate` and `migrDate`
+- Rows with empty `jobCode` AND empty `siteId` are skipped
+
+Output row fields use the same names as `AppData` rows (`contractor`, `newTotalPrice`, `lmp`, `contractor2`, `vfInvoiceNo`, `ctrInvoiceNo`, etc.) so the same tax logic and filter functions work unchanged.
+
+### Tax logic
+
+Identical to TX-RF Invoice tab:
+- `totalTaxed = newTotalPrice × 1.14`
+- `contractorTaxed = contractor2 × 1.13` (Upper Telecom) / `× 1.11` (others) / `0` (In-House)
+- `lmpTaxed = totalTaxed − contractorTaxed`
+
+### Contractor table
+
+Same 3-level header structure as TX-RF Invoice. **In-House excluded from the table** (same rule as TX-RF Invoice — zero contractor portion, excluded for clarity; still counted in KPI totals).
+
+### Filters (5)
+
+VF Invoice # · VF Invoice Submission Date · Cash Received Date · Contractor Invoice # · Contractor Invoice Subm Date
+
+Same exact-match and auto-fill behavior as TX-RF Invoice. `syncDateSelects()` is used (not `render()`) to avoid focus loss.
 
 ## All Tasks section (tasks.js)
 
@@ -210,9 +305,30 @@ Task Date · FAC Date · PO Status · Contractor · Search (Job Code, Site ID, C
 
 All filters share the collapsible panel pattern (see below). Clear button resets all state and calls `render()`.
 
+## Admin panel (admin.js)
+
+The Admin panel is hidden by default — revealed by clicking the drawer logo 5 times within 2 seconds, or by navigating to `#admin`.
+
+### Dropbox Configuration cards (2)
+
+One card per data source, each self-contained:
+
+| Card | localStorage key | Config URL param |
+|---|---|---|
+| Invoicing Track | `telecom_file_url` | `?cfg=<base64>` |
+| BH Sites | `telecom_file_url_2` | `?cfg2=<base64>` |
+
+Each card has: URL input → Save button → status badge → divider → Generate Config URL button + copy output.
+
+**`handleConfigParam()` in `app.js`** reads both `?cfg=` and `?cfg2=` on page load — so a single shared link can configure either or both files at once.
+
+### Cache Management card
+
+Shows record count and last sync time for **both** files separately. "Clear All Cache" removes all four localStorage keys (`cacheKey`, `lastSyncKey`, `cacheKey2`, `lastSyncKey2`) and resets both `AppData` and `AppData2`.
+
 ## Collapsible filter pattern (mobile UX)
 
-Used in **Dashboard**, **Invoices**, and **All Tasks**. CSS classes live in `styles.css`:
+Used in **Dashboard**, **TX-RF Invoice**, **POC Invoices**, and **All Tasks**. CSS classes live in `styles.css`:
 
 - `.dash-filter-toggle` — the toggle button, hidden on desktop (`≥768px`)
 - `.dash-filter-chevron` — rotates 180° when open (`.open` class)
@@ -233,7 +349,8 @@ Every section `<h2>` heading includes the same emoji used in the nav drawer:
 |---|---|---|
 | Dashboard | 📊 | Dashboard |
 | All Tasks | 📋 | All Tasks |
-| Invoices | 💰 | Invoices |
+| TX-RF Invoice | 💰 | TX-RF Invoice |
+| POC Invoices | 🗄️ | POC Invoices |
 | Admin | ⚙️ | Admin |
 
 ## Sidebar branding (drawer-brand-frame)
@@ -262,10 +379,14 @@ The logo file must be placed at `assets/landmark-plus-logo.png` and is included 
 
 | Key | Content |
 |---|---|
-| `ta_dropbox_token` | Dropbox Bearer token |
-| `ta_dropbox_path` | File path (e.g. `/Reports/file.xlsm`) |
-| `ta_last_sync` | ISO timestamp of last successful sync |
-| `ta_cached_data` | JSON-serialized `AppData` array |
+| `telecom_file_url` | Dropbox direct-download URL for File 1 (Invoicing Track) |
+| `telecom_file_url_2` | Dropbox direct-download URL for File 2 (BH Sites) |
+| `telecom_data_cache` | JSON-serialized `AppData` array (File 1) |
+| `telecom_last_sync` | ISO timestamp of last successful File 1 sync |
+| `telecom_data_cache_2` | JSON-serialized `AppData2` array (File 2) |
+| `telecom_last_sync_2` | ISO timestamp of last successful File 2 sync |
+| `ta_dropbox_token` | Legacy Dropbox Bearer token (settings.js) |
+| `ta_dropbox_path` | Legacy file path (settings.js) |
 
 Cache writes are wrapped in try/catch — large datasets may hit the ~5 MB quota silently.
 
@@ -279,7 +400,7 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 
 ### KPI subtitle
 
-`.kpi-subtitle` — small muted line rendered below `.kpi-value` inside a KPI card. Used in the Invoices section to show the Old / New breakdown beneath each card's total. Pass as the 4th argument to `kpiCard()`.
+`.kpi-subtitle` — small muted line rendered below `.kpi-value` inside a KPI card. Used in the TX-RF Invoice and POC Invoices sections to show the Old / New breakdown beneath each card's total. Pass as the 4th argument to `kpiCard()`.
 
 ## PWA & icons (pwa.js / sw.js)
 
