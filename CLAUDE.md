@@ -23,10 +23,20 @@ Scripts must stay in this exact order — each file depends on globals defined b
 
 ```
 config.js → parser.js → parser2.js → charts.js → dashboard.js →
-tasks.js → financials.js → poc.js → admin.js → dropbox.js → pwa.js → app.js
+tasks.js → excel-export.js → financials.js → poc.js → admin.js → dropbox.js → pwa.js → app.js
 ```
 
 > `category.js` was removed — the By Category section no longer exists.
+
+### CDN dependencies (loaded before app modules)
+
+| Library | Version | Purpose |
+|---|---|---|
+| SheetJS (`xlsx.full.min.js`) | 0.18.5 | **Reading** Excel files from Dropbox (parsing only) |
+| Chart.js | 4.4.0 | Charts on the Dashboard |
+| ExcelJS | 4.4.0 | **Writing** styled Excel exports — SheetJS community edition does not support cell styling |
+
+> **Architecture decision:** SheetJS is used only for reading. ExcelJS is used only for writing. They coexist because they use different globals (`XLSX` vs `ExcelJS`) and serve different purposes. Do not use SheetJS `XLSX.writeFile` for export — styles are silently dropped in the community edition.
 
 ## Global namespace conventions
 
@@ -45,6 +55,7 @@ Every JS file exposes exactly one `window.*` object. Never use ES modules (`impo
 | `window.TasksModule` | `tasks.js` | `render()`, `applyFilters()`, `goToPage(n)` |
 | `window.FinancialsModule` | `financials.js` | `render()` |
 | `window.POCModule` | `poc.js` | `render()` |
+| `window.ExcelExport` | `excel-export.js` | `generate(selectedNos, allData, opts)` — builds and downloads a styled `.xlsx` |
 | `window.DropboxModule` | `dropbox.js` | `fetchFile()` → workbook 1; `fetchFile2()` → workbook 2 |
 | `window.showToast` | `app.js` | `showToast(msg, 'success'|'error'|'info')` |
 
@@ -287,6 +298,92 @@ VF Invoice # · VF Invoice Submission Date · Cash Received Date · Contractor I
 
 Same exact-match and auto-fill behavior as TX-RF Invoice. `syncDateSelects()` is used (not `render()`) to avoid focus loss.
 
+### Export card render pattern (both sections)
+
+`render()` writes three containers into the section content div:
+
+```
+<div class="card fin-filter-card">  ← filter controls, built once
+<div id="[fin|poc]-export-card">    ← export card, filled by renderExportCard()
+<div id="[fin|poc]-results">        ← KPIs + table, filled by renderResults()
+```
+
+`renderExportCard()` is called from `render()` (not on every filter change). It rebuilds the export card HTML from `_exportInput` (the persisted input string) and re-binds events. `updateExportUI()` is the lightweight updater called on every keystroke and chip click — it syncs chips, status text, and the download button without touching the input element.
+
+## Excel Export feature (excel-export.js)
+
+Both **TX-RF Invoice** and **POC Invoices** sections expose an "Export to Excel" card that appears between the filter card and the results. The export is driven by `window.ExcelExport.generate()`.
+
+### Selector UI
+
+- A single text input where the user types space-separated VF invoice numbers.
+- Below the input: all available VF invoice numbers rendered as clickable **chips**. Clicking a chip toggles it into/out of the text input. Active chips show a ✓ and blue highlight (`.invoice-chip-active`).
+- A live status line shows `"N invoices selected"` and warns about any typed values that don't exist in `_data`.
+- The **Download Excel** button shows the count and is disabled until at least one valid invoice is in the input.
+- **Clear** resets the input and chips.
+- Selection state is stored in `_exportInput` (a module-level string), so it persists across filter changes but resets on page reload.
+
+### Excel generation (`ExcelExport.generate`)
+
+```javascript
+ExcelExport.generate(selectedNos, allData, {
+  filename: 'TX-RF-Invoices.xlsx',   // or 'POC-Invoices.xlsx'
+  isNew: function(row) { ... },       // returns true if row is "New" (2026+)
+  calcTax: function(row) { ... },     // returns { totalTaxed, lmpTaxed, contractorTaxed }
+  contractorTaxLabel: function(name)  // returns '11%' / '13%' / '14%'
+});
+```
+
+- All selected invoices are written to a **single sheet** named `Invoices`.
+- Each invoice is an independent block stacked vertically, separated by 2 blank rows.
+- In-House is excluded from each block's contractor rows (same rule as the on-screen table).
+- Amount cells use `#,##0` number format so Excel renders commas with no decimals.
+
+### Per-block layout (rows relative to block start)
+
+| Offset | Content | Columns |
+|---|---|---|
+| 0 | Title row: `"Invoice: X  VF Submit: …  Cash Received: …"` | A–F merged |
+| 1 | Blank row | — |
+| 2 (H1) | `Contractor` / `Tax` / `Contractor Portion taxed (EGP)` | A–B / C–F merged |
+| 3 (H2) | *(blank)* / `Old` / `New` | A–B / C–D merged / E–F merged |
+| 4 (H3) | *(blank)* / `Invoice #` / `Amount (EGP)` / `Invoice #` / `Amount (EGP)` | A–B / C / D / E / F |
+| 5..N | Contractor data rows | — |
+| N+1 | Total row | — |
+
+Contractor and Tax header cells span H1–H3 (rows 2–4) via Excel merge.
+
+### Cell colour scheme
+
+| Area | Fill | Text |
+|---|---|---|
+| Title row | `#00B050` green | White bold |
+| Contractor + Tax header (spans H1–H3) | `#C00000` red | White bold |
+| "Contractor Portion taxed (EGP)" (H1 cols C–F) | `#2563EB` blue | White bold |
+| Old / Invoice # / Amount **headers** (H2–H3 cols C–D) | `#DCFCE7` light green | Black bold |
+| Old Invoice # + Amount **data cells** | `#F0FDF4` very light green | Black |
+| New / Invoice # / Amount **headers** (H2–H3 cols E–F) | `#DBEAFE` light blue | Black bold |
+| New Invoice # + Amount **data cells** | `#EFF6FF` very light blue | Black |
+| Total row | `#808080` gray | White bold |
+| Contractor name + Tax% data cells | No fill | Black |
+
+Invoice # and Amount cells are **center-aligned** in both headers and data rows.
+
+### CSS classes added for the export card
+
+| Class | Purpose |
+|---|---|
+| `.invoice-export-card` | Card wrapper (border, padding, background) |
+| `.invoice-export-header` | Flex row: title left, action buttons right |
+| `.invoice-export-title` | Bold section label |
+| `.invoice-export-actions` | Button group (Clear + Download) |
+| `.invoice-export-input` | Full-width text input (`width:100%`) |
+| `.invoice-export-chips` | Scrollable flex wrap of chip pills (max-height 130px) |
+| `.invoice-chip` | Individual pill — border, rounded, hover effect |
+| `.invoice-chip-active` | Selected state — blue border/bg, ✓ prefix |
+| `.invoice-export-status` | Small status line below chips |
+| `.btn-sm` | Small button variant (`padding .28rem .65rem; font-size .8rem`) |
+
 ## All Tasks section (tasks.js)
 
 ### Table columns (8)
@@ -409,4 +506,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v8`
+- Current cache version: `telecom-analysis-v9`
