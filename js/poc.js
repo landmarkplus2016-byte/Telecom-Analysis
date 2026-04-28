@@ -20,6 +20,7 @@ window.POCModule = (function () {
   };
 
   var _data = []; // processed rows (2 per source row)
+  var _exportInput = ''; // space-separated VF invoice numbers typed by user
 
   /* ── Helpers ── */
   function fmt(n) {
@@ -752,10 +753,150 @@ window.POCModule = (function () {
     el.innerHTML =
       '<div class="section-header"><h2>🗄️ POC Invoices</h2></div>' +
       '<div class="card fin-filter-card">' + buildFilterHTML() + '</div>' +
+      '<div id="poc-export-card" style="margin-bottom:1.25rem"></div>' +
       '<div id="poc-results"></div>';
 
     renderResults();
     bindFilterEvents();
+    renderExportCard();
+  }
+
+  /* ── Excel Export Card ── */
+  function buildExportCardHTML() {
+    var invoiceNums = getInvoiceNumbers(_data);
+    var allSet = {};
+    invoiceNums.forEach(function (v) { allSet[v] = 1; });
+
+    var typed = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var typedSet = {};
+    typed.forEach(function (v) { typedSet[v] = 1; });
+    var validCount = typed.filter(function (v) { return allSet[v]; }).length;
+
+    var btnLabel  = validCount ? '&#8659; Download Excel (' + validCount + ')' : '&#8659; Download Excel';
+    var invalid   = typed.length - validCount;
+    var statusHtml = '';
+    if (typed.length > 0) {
+      statusHtml = '<p id="poc-export-status" class="invoice-export-status">' +
+        validCount + ' invoice' + (validCount !== 1 ? 's' : '') + ' selected' +
+        (invalid > 0 ? ' &nbsp;&bull;&nbsp; <span style="color:var(--danger)">' + invalid + ' not found</span>' : '') +
+        '</p>';
+    } else {
+      statusHtml = '<p id="poc-export-status" class="invoice-export-status" style="display:none"></p>';
+    }
+
+    return (
+      '<div class="invoice-export-card">' +
+        '<div class="invoice-export-header">' +
+          '<span class="invoice-export-title">Export to Excel</span>' +
+          '<div class="invoice-export-actions">' +
+            '<button id="poc-export-clear-btn" class="btn btn-outline btn-sm">Clear</button>' +
+            '<button id="poc-export-dl-btn" class="btn btn-primary btn-sm"' + (!validCount ? ' disabled' : '') + '>' + btnLabel + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<input type="text" id="poc-export-input" class="search-input invoice-export-input"' +
+          ' placeholder="Type VF invoice numbers separated by spaces or click below…"' +
+          ' value="' + escHtml(_exportInput) + '">' +
+        '<div id="poc-export-chips" class="invoice-export-chips">' +
+          invoiceNums.map(function (v) {
+            var active = typedSet[v] ? ' invoice-chip-active' : '';
+            return '<span class="invoice-chip' + active + '" data-value="' + escHtml(v) + '">' + escHtml(v) + '</span>';
+          }).join('') +
+        '</div>' +
+        statusHtml +
+      '</div>'
+    );
+  }
+
+  function renderExportCard() {
+    var el = document.getElementById('poc-export-card');
+    if (!el) return;
+    el.innerHTML = buildExportCardHTML();
+    bindExportEvents();
+  }
+
+  /* Update chips, status, and button without touching the input element */
+  function updateExportUI() {
+    var inputEl = document.getElementById('poc-export-input');
+    if (inputEl) _exportInput = inputEl.value;
+
+    var invoiceNums = getInvoiceNumbers(_data);
+    var allSet = {};
+    invoiceNums.forEach(function (v) { allSet[v] = 1; });
+
+    var typed = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var typedSet = {};
+    typed.forEach(function (v) { typedSet[v] = 1; });
+    var validCount = typed.filter(function (v) { return allSet[v]; }).length;
+    var invalid    = typed.length - validCount;
+
+    document.querySelectorAll('#poc-export-chips .invoice-chip').forEach(function (chip) {
+      chip.classList.toggle('invoice-chip-active', !!typedSet[chip.dataset.value]);
+    });
+
+    var statusEl = document.getElementById('poc-export-status');
+    if (statusEl) {
+      if (typed.length === 0) {
+        statusEl.innerHTML = '';
+        statusEl.style.display = 'none';
+      } else {
+        statusEl.innerHTML = validCount + ' invoice' + (validCount !== 1 ? 's' : '') + ' selected' +
+          (invalid > 0 ? ' &nbsp;&bull;&nbsp; <span style="color:var(--danger)">' + invalid + ' not found</span>' : '');
+        statusEl.style.display = '';
+      }
+    }
+
+    var btn = document.getElementById('poc-export-dl-btn');
+    if (btn) {
+      btn.disabled = !validCount;
+      btn.innerHTML = validCount ? '&#8659; Download Excel (' + validCount + ')' : '&#8659; Download Excel';
+    }
+  }
+
+  function bindExportEvents() {
+    /* Text input */
+    var inputEl = document.getElementById('poc-export-input');
+    if (inputEl) inputEl.addEventListener('input', updateExportUI);
+
+    /* Chips — toggle invoice number in the input */
+    document.querySelectorAll('#poc-export-chips .invoice-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var v    = chip.dataset.value;
+        var inp  = document.getElementById('poc-export-input');
+        if (!inp) return;
+        var parts = inp.value.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        var idx   = parts.indexOf(v);
+        if (idx >= 0) parts.splice(idx, 1); else parts.push(v);
+        inp.value = parts.join(' ');
+        updateExportUI();
+      });
+    });
+
+    /* Clear */
+    var clearBtn = document.getElementById('poc-export-clear-btn');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      var inp = document.getElementById('poc-export-input');
+      if (inp) inp.value = '';
+      _exportInput = '';
+      updateExportUI();
+    });
+
+    /* Download */
+    var dlBtn = document.getElementById('poc-export-dl-btn');
+    if (dlBtn) dlBtn.addEventListener('click', function () {
+      var invoiceNums = getInvoiceNumbers(_data);
+      var allSet = {};
+      invoiceNums.forEach(function (v) { allSet[v] = 1; });
+      var typed   = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      var seen    = {};
+      var valid   = typed.filter(function (v) { return allSet[v] && !seen[v] && (seen[v] = 1); });
+      if (!valid.length) return;
+      window.ExcelExport.generate(valid, _data, {
+        filename: 'POC-Invoices.xlsx',
+        isNew: function (r) { return r.taskType === 'New'; },
+        calcTax: calcTax,
+        contractorTaxLabel: contractorTaxLabel
+      });
+    });
   }
 
   return { render: render };

@@ -16,6 +16,7 @@ window.FinancialsModule = (function () {
   };
 
   var _data = []; // module-level data cache
+  var _exportInput = ''; // space-separated VF invoice numbers typed by user
 
   /* ── Helpers ── */
   function fmt(n) {
@@ -396,11 +397,153 @@ window.FinancialsModule = (function () {
         buildFilterHTML() +
       '</div>' +
 
+      /* Excel export card */
+      '<div id="fin-export-card" style="margin-bottom:1.25rem"></div>' +
+
       /* Results container — updated by renderResults() */
       '<div id="fin-results"></div>';
 
     renderResults();
     bindFilterEvents();
+    renderExportCard();
+  }
+
+  /* ── Excel Export Card ── */
+  function buildExportCardHTML() {
+    var invoiceNums = getInvoiceNumbers(_data);
+    var allSet = {};
+    invoiceNums.forEach(function (v) { allSet[v] = 1; });
+
+    var typed = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var typedSet = {};
+    typed.forEach(function (v) { typedSet[v] = 1; });
+    var validCount = typed.filter(function (v) { return allSet[v]; }).length;
+
+    var btnLabel  = validCount ? '&#8659; Download Excel (' + validCount + ')' : '&#8659; Download Excel';
+    var invalid   = typed.length - validCount;
+    var statusHtml = '';
+    if (typed.length > 0) {
+      statusHtml = '<p id="fin-export-status" class="invoice-export-status">' +
+        validCount + ' invoice' + (validCount !== 1 ? 's' : '') + ' selected' +
+        (invalid > 0 ? ' &nbsp;&bull;&nbsp; <span style="color:var(--danger)">' + invalid + ' not found</span>' : '') +
+        '</p>';
+    } else {
+      statusHtml = '<p id="fin-export-status" class="invoice-export-status" style="display:none"></p>';
+    }
+
+    return (
+      '<div class="invoice-export-card">' +
+        '<div class="invoice-export-header">' +
+          '<span class="invoice-export-title">Export to Excel</span>' +
+          '<div class="invoice-export-actions">' +
+            '<button id="fin-export-clear-btn" class="btn btn-outline btn-sm">Clear</button>' +
+            '<button id="fin-export-dl-btn" class="btn btn-primary btn-sm"' + (!validCount ? ' disabled' : '') + '>' + btnLabel + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<input type="text" id="fin-export-input" class="search-input invoice-export-input"' +
+          ' placeholder="Type VF invoice numbers separated by spaces or click below…"' +
+          ' value="' + escHtml(_exportInput) + '">' +
+        '<div id="fin-export-chips" class="invoice-export-chips">' +
+          invoiceNums.map(function (v) {
+            var active = typedSet[v] ? ' invoice-chip-active' : '';
+            return '<span class="invoice-chip' + active + '" data-value="' + escHtml(v) + '">' + escHtml(v) + '</span>';
+          }).join('') +
+        '</div>' +
+        statusHtml +
+      '</div>'
+    );
+  }
+
+  function renderExportCard() {
+    var el = document.getElementById('fin-export-card');
+    if (!el) return;
+    el.innerHTML = buildExportCardHTML();
+    bindExportEvents();
+  }
+
+  /* Update chips, status, and button without touching the input element */
+  function updateExportUI() {
+    var inputEl = document.getElementById('fin-export-input');
+    if (inputEl) _exportInput = inputEl.value;
+
+    var invoiceNums = getInvoiceNumbers(_data);
+    var allSet = {};
+    invoiceNums.forEach(function (v) { allSet[v] = 1; });
+
+    var typed = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var typedSet = {};
+    typed.forEach(function (v) { typedSet[v] = 1; });
+    var validCount = typed.filter(function (v) { return allSet[v]; }).length;
+    var invalid    = typed.length - validCount;
+
+    document.querySelectorAll('#fin-export-chips .invoice-chip').forEach(function (chip) {
+      chip.classList.toggle('invoice-chip-active', !!typedSet[chip.dataset.value]);
+    });
+
+    var statusEl = document.getElementById('fin-export-status');
+    if (statusEl) {
+      if (typed.length === 0) {
+        statusEl.innerHTML = '';
+        statusEl.style.display = 'none';
+      } else {
+        statusEl.innerHTML = validCount + ' invoice' + (validCount !== 1 ? 's' : '') + ' selected' +
+          (invalid > 0 ? ' &nbsp;&bull;&nbsp; <span style="color:var(--danger)">' + invalid + ' not found</span>' : '');
+        statusEl.style.display = '';
+      }
+    }
+
+    var btn = document.getElementById('fin-export-dl-btn');
+    if (btn) {
+      btn.disabled = !validCount;
+      btn.innerHTML = validCount ? '&#8659; Download Excel (' + validCount + ')' : '&#8659; Download Excel';
+    }
+  }
+
+  function bindExportEvents() {
+    /* Text input */
+    var inputEl = document.getElementById('fin-export-input');
+    if (inputEl) inputEl.addEventListener('input', updateExportUI);
+
+    /* Chips — toggle invoice number in the input */
+    document.querySelectorAll('#fin-export-chips .invoice-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var v    = chip.dataset.value;
+        var inp  = document.getElementById('fin-export-input');
+        if (!inp) return;
+        var parts = inp.value.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        var idx   = parts.indexOf(v);
+        if (idx >= 0) parts.splice(idx, 1); else parts.push(v);
+        inp.value = parts.join(' ');
+        updateExportUI();
+      });
+    });
+
+    /* Clear */
+    var clearBtn = document.getElementById('fin-export-clear-btn');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      var inp = document.getElementById('fin-export-input');
+      if (inp) inp.value = '';
+      _exportInput = '';
+      updateExportUI();
+    });
+
+    /* Download */
+    var dlBtn = document.getElementById('fin-export-dl-btn');
+    if (dlBtn) dlBtn.addEventListener('click', function () {
+      var invoiceNums = getInvoiceNumbers(_data);
+      var allSet = {};
+      invoiceNums.forEach(function (v) { allSet[v] = 1; });
+      var typed   = _exportInput.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      var seen    = {};
+      var valid   = typed.filter(function (v) { return allSet[v] && !seen[v] && (seen[v] = 1); });
+      if (!valid.length) return;
+      window.ExcelExport.generate(valid, _data, {
+        filename: 'TX-RF-Invoices.xlsx',
+        isNew: function (r) { var p = parseDateParts(r.taskDate); return !!(p && p.year === 2026); },
+        calcTax: calcTax,
+        contractorTaxLabel: contractorTaxLabel
+      });
+    });
   }
 
   /* Build the filter card HTML from current state */

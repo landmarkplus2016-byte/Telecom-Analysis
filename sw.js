@@ -1,4 +1,4 @@
-const CACHE_NAME = 'telecom-analysis-v8';
+const CACHE_NAME = 'telecom-analysis-v9';
 
 // Relative paths work on both file:// and any HTTPS subdirectory (GitHub Pages, etc.)
 const CACHE_FILES = [
@@ -12,6 +12,7 @@ const CACHE_FILES = [
   './js/dashboard.js',
   './js/tasks.js',
   './js/category.js',
+  './js/excel-export.js',
   './js/financials.js',
   './js/admin.js',
   './js/dropbox.js',

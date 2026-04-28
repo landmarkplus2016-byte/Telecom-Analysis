@@ -707,6 +707,73 @@ td.col-center { text-align: center; }
   animation: spin .7s linear infinite;
 }
 
+/* ── Small button variant ── */
+.btn-sm { padding: .28rem .65rem; font-size: .8rem; }
+
+/* ── Invoice Excel Export Card ── */
+.invoice-export-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.invoice-export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-bottom: .65rem;
+}
+
+.invoice-export-title { font-weight: 600; font-size: .95rem; }
+
+.invoice-export-actions { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+
+.invoice-export-input { width: 100%; margin-bottom: .5rem; }
+
+.invoice-export-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .4rem;
+  max-height: 130px;
+  overflow-y: auto;
+  padding: .4rem .5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.invoice-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .18rem .55rem;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: .78rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background .12s, border-color .12s, color .12s;
+  white-space: nowrap;
+}
+.invoice-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+.invoice-chip-active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.invoice-chip-active::before { content: '✓ '; font-size: .72rem; }
+
+.invoice-export-status {
+  font-size: .8rem;
+  color: var(--muted);
+  margin-top: .4rem;
+  margin-bottom: 0;
+}
+
 /* ── Info Banner ── */
 .info-banner {
   margin: 1rem;
