@@ -31,7 +31,7 @@ window.FinancialsModule = (function () {
      Rules:
        totalTaxed       = newTotalPrice × 1.14  (always 14%)
        contractorTaxed  = contractor2 × 1.13    (Upper Telecom)
-                        = contractor2 × 1.11    (all other non In-House)
+                        = contractor2 × 1.10    (all other non In-House)
                         = 0                     (In-House)
        lmpTaxed         = totalTaxed             (In-House)
                         = totalTaxed − contractorTaxed  (everyone else)
@@ -45,7 +45,7 @@ window.FinancialsModule = (function () {
       contractorTaxed = 0;
       lmpTaxed        = totalTaxed;
     } else {
-      var cRate       = (c === 'upper telecom') ? 1.13 : 1.11;
+      var cRate       = (c === 'upper telecom') ? 1.13 : 1.10;
       contractorTaxed = (r.contractor2 || 0) * cRate;
       lmpTaxed        = totalTaxed - contractorTaxed;
     }
@@ -58,7 +58,7 @@ window.FinancialsModule = (function () {
     var c = String(contractor || '').trim().toLowerCase();
     if (c === 'in-house')      return '14%';
     if (c === 'upper telecom') return '13%';
-    return '11%';
+    return '10%';
   }
 
   /* Parse "DD/MM/YYYY" → {day, month, year} or null */
@@ -316,7 +316,7 @@ window.FinancialsModule = (function () {
                 fmt(totalLMP) + ' EGP',
                 'blue',
                 'Old: ' + fmt(totLmpOld) + ' &nbsp;|&nbsp; New: ' + fmt(totLmpNew)) +
-        kpiCard('Contractor Portion <span class="kpi-tax-note">+11% / 13% tax</span>',
+        kpiCard('Contractor Portion <span class="kpi-tax-note">+10% / 13% tax</span>',
                 fmt(totalC2) + ' EGP',
                 'red',
                 'Old: ' + fmt(totC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(totC2New)) +

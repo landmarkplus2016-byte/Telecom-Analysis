@@ -131,7 +131,7 @@ window.POCModule = (function () {
       contractorTaxed = 0;
       lmpTaxed        = totalTaxed;
     } else {
-      var cRate       = (c === 'upper telecom') ? 1.13 : 1.11;
+      var cRate       = (c === 'upper telecom') ? 1.13 : 1.10;
       contractorTaxed = (r.contractor2 || 0) * cRate;
       lmpTaxed        = totalTaxed - contractorTaxed;
     }
@@ -142,7 +142,7 @@ window.POCModule = (function () {
     var c = String(contractor || '').trim().toLowerCase();
     if (c === 'in-house')      return '14%';
     if (c === 'upper telecom') return '13%';
-    return '11%';
+    return '10%';
   }
 
   /* ── Expand raw rows: 1 source row → Installation + Migration rows ── */
@@ -482,7 +482,7 @@ window.POCModule = (function () {
         kpiCard('LMP Portion <span class="kpi-tax-note">total − contractor</span>',
                 fmt(totalLMP) + ' EGP', 'blue',
                 'Old: ' + fmt(totLmpOld) + ' &nbsp;|&nbsp; New: ' + fmt(totLmpNew)) +
-        kpiCard('Contractor Portion <span class="kpi-tax-note">+11% / 13% tax</span>',
+        kpiCard('Contractor Portion <span class="kpi-tax-note">+10% / 13% tax</span>',
                 fmt(totalC2) + ' EGP', 'red',
                 'Old: ' + fmt(totC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(totC2New)) +
       '</div>' +
