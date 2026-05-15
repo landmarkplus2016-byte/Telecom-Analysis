@@ -794,14 +794,8 @@ window.POCModule = (function () {
           '</div>' +
         '</div>' +
         '<input type="text" id="poc-export-input" class="search-input invoice-export-input"' +
-          ' placeholder="Type VF invoice numbers separated by spaces or click below…"' +
+          ' placeholder="Type VF invoice numbers separated by spaces…"' +
           ' value="' + escHtml(_exportInput) + '">' +
-        '<div id="poc-export-chips" class="invoice-export-chips">' +
-          invoiceNums.map(function (v) {
-            var active = typedSet[v] ? ' invoice-chip-active' : '';
-            return '<span class="invoice-chip' + active + '" data-value="' + escHtml(v) + '">' + escHtml(v) + '</span>';
-          }).join('') +
-        '</div>' +
         statusHtml +
       '</div>'
     );
@@ -829,10 +823,6 @@ window.POCModule = (function () {
     var validCount = typed.filter(function (v) { return allSet[v]; }).length;
     var invalid    = typed.length - validCount;
 
-    document.querySelectorAll('#poc-export-chips .invoice-chip').forEach(function (chip) {
-      chip.classList.toggle('invoice-chip-active', !!typedSet[chip.dataset.value]);
-    });
-
     var statusEl = document.getElementById('poc-export-status');
     if (statusEl) {
       if (typed.length === 0) {
@@ -856,20 +846,6 @@ window.POCModule = (function () {
     /* Text input */
     var inputEl = document.getElementById('poc-export-input');
     if (inputEl) inputEl.addEventListener('input', updateExportUI);
-
-    /* Chips — toggle invoice number in the input */
-    document.querySelectorAll('#poc-export-chips .invoice-chip').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        var v    = chip.dataset.value;
-        var inp  = document.getElementById('poc-export-input');
-        if (!inp) return;
-        var parts = inp.value.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
-        var idx   = parts.indexOf(v);
-        if (idx >= 0) parts.splice(idx, 1); else parts.push(v);
-        inp.value = parts.join(' ');
-        updateExportUI();
-      });
-    });
 
     /* Clear */
     var clearBtn = document.getElementById('poc-export-clear-btn');

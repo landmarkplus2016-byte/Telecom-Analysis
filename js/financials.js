@@ -12,7 +12,8 @@ window.FinancialsModule = (function () {
     vfSubmitYear:  '', vfSubmitMonth:  '', vfSubmitDay:  '',
     cashRcvYear:   '', cashRcvMonth:   '', cashRcvDay:   '',
     ctrInvoiceNo:  '',
-    ctrSubmitYear: '', ctrSubmitMonth: '', ctrSubmitDay: ''
+    ctrSubmitYear: '', ctrSubmitMonth: '', ctrSubmitDay: '',
+    tsrSubNo:      ''
   };
 
   var _data = []; // module-level data cache
@@ -203,6 +204,16 @@ window.FinancialsModule = (function () {
     return true;
   }
 
+  /* Unique sorted TSR Sub# values */
+  function getTsrSubNos(data) {
+    var seen = {};
+    data.forEach(function (r) {
+      var v = String(r.tsrSubNo || '').trim();
+      if (v) seen[v] = 1;
+    });
+    return Object.keys(seen).sort();
+  }
+
   /* Unique sorted Contractor Invoice numbers for datalist */
   function getCtrInvoiceNumbers(data) {
     var seen = {};
@@ -223,6 +234,7 @@ window.FinancialsModule = (function () {
       if (!dateMatchesFilter(r.cashReceivedDate,        state.cashRcvYear,   state.cashRcvMonth,   state.cashRcvDay))   return false;
       if (state.ctrInvoiceNo && String(r.ctrInvoiceNo || '').trim() !== state.ctrInvoiceNo.trim()) return false;
       if (!dateMatchesFilter(r.ctrInvoiceSubmitDate,    state.ctrSubmitYear, state.ctrSubmitMonth, state.ctrSubmitDay)) return false;
+      if (state.tsrSubNo && !String(r.tsrSubNo || '').trim().toLowerCase().startsWith(state.tsrSubNo.trim().toLowerCase())) return false;
       return true;
     });
   }
@@ -441,14 +453,8 @@ window.FinancialsModule = (function () {
           '</div>' +
         '</div>' +
         '<input type="text" id="fin-export-input" class="search-input invoice-export-input"' +
-          ' placeholder="Type VF invoice numbers separated by spaces or click below…"' +
+          ' placeholder="Type VF invoice numbers separated by spaces…"' +
           ' value="' + escHtml(_exportInput) + '">' +
-        '<div id="fin-export-chips" class="invoice-export-chips">' +
-          invoiceNums.map(function (v) {
-            var active = typedSet[v] ? ' invoice-chip-active' : '';
-            return '<span class="invoice-chip' + active + '" data-value="' + escHtml(v) + '">' + escHtml(v) + '</span>';
-          }).join('') +
-        '</div>' +
         statusHtml +
       '</div>'
     );
@@ -476,10 +482,6 @@ window.FinancialsModule = (function () {
     var validCount = typed.filter(function (v) { return allSet[v]; }).length;
     var invalid    = typed.length - validCount;
 
-    document.querySelectorAll('#fin-export-chips .invoice-chip').forEach(function (chip) {
-      chip.classList.toggle('invoice-chip-active', !!typedSet[chip.dataset.value]);
-    });
-
     var statusEl = document.getElementById('fin-export-status');
     if (statusEl) {
       if (typed.length === 0) {
@@ -503,20 +505,6 @@ window.FinancialsModule = (function () {
     /* Text input */
     var inputEl = document.getElementById('fin-export-input');
     if (inputEl) inputEl.addEventListener('input', updateExportUI);
-
-    /* Chips — toggle invoice number in the input */
-    document.querySelectorAll('#fin-export-chips .invoice-chip').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        var v    = chip.dataset.value;
-        var inp  = document.getElementById('fin-export-input');
-        if (!inp) return;
-        var parts = inp.value.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
-        var idx   = parts.indexOf(v);
-        if (idx >= 0) parts.splice(idx, 1); else parts.push(v);
-        inp.value = parts.join(' ');
-        updateExportUI();
-      });
-    });
 
     /* Clear */
     var clearBtn = document.getElementById('fin-export-clear-btn');
@@ -544,6 +532,16 @@ window.FinancialsModule = (function () {
         contractorTaxLabel: contractorTaxLabel
       });
     });
+  }
+
+  /* Build TSR Sub# datalist options filtered to values starting with typed text */
+  function buildTsrDatalistOpts(typed) {
+    var lower = (typed || '').trim().toLowerCase();
+    return getTsrSubNos(_data).filter(function (v) {
+      return !lower || v.toLowerCase().startsWith(lower);
+    }).map(function (v) {
+      return '<option value="' + escHtml(v) + '">';
+    }).join('');
   }
 
   /* Build the filter card HTML from current state */
@@ -628,6 +626,13 @@ window.FinancialsModule = (function () {
               buildMonthOpts('fin-cs-month', csMonths, state.ctrSubmitYear,  state.ctrSubmitMonth) +
               buildDayOpts('fin-cs-day',   csDays,   state.ctrSubmitYear,  state.ctrSubmitMonth, state.ctrSubmitDay) +
             '</div>' +
+          '</div>' +
+
+          /* TSR Sub # */
+          '<div class="fin-filter-group">' +
+            '<label class="field-label">TSR Sub #</label>' +
+            '<datalist id="fin-tsr-datalist">' + buildTsrDatalistOpts(state.tsrSubNo) + '</datalist>' +
+            '<input type="text" id="fin-tsr-input" class="search-input" list="fin-tsr-datalist" placeholder="Type to search TSR sub #…" value="' + escHtml(state.tsrSubNo) + '">' +
           '</div>' +
 
           /* Clear */
@@ -726,6 +731,7 @@ window.FinancialsModule = (function () {
     if (state.cashRcvYear   || state.cashRcvMonth   || state.cashRcvDay)  count++;
     if (state.ctrInvoiceNo)                                               count++;
     if (state.ctrSubmitYear || state.ctrSubmitMonth || state.ctrSubmitDay) count++;
+    if (state.tsrSubNo)                                                    count++;
     if (count) {
       badge.textContent   = count;
       badge.style.display = 'inline-flex';
@@ -843,6 +849,16 @@ window.FinancialsModule = (function () {
       updateFilterBadge(); renderResults();
     });
 
+    /* TSR Sub # — type-ahead with starts-with datalist */
+    var tsrInp = document.getElementById('fin-tsr-input');
+    var tsrDL  = document.getElementById('fin-tsr-datalist');
+    if (tsrInp) tsrInp.addEventListener('input', function (e) {
+      state.tsrSubNo = e.target.value;
+      if (tsrDL) tsrDL.innerHTML = buildTsrDatalistOpts(state.tsrSubNo);
+      updateFilterBadge();
+      renderResults();
+    });
+
     /* Clear */
     var clearBtn = document.getElementById('fin-clear-btn');
     if (clearBtn) clearBtn.addEventListener('click', function () {
@@ -851,6 +867,7 @@ window.FinancialsModule = (function () {
       state.cashRcvYear   = ''; state.cashRcvMonth   = ''; state.cashRcvDay   = '';
       state.ctrInvoiceNo  = '';
       state.ctrSubmitYear = ''; state.ctrSubmitMonth = ''; state.ctrSubmitDay = '';
+      state.tsrSubNo      = '';
       render();
     });
   }

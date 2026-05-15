@@ -99,6 +99,7 @@ The single Sync button handles both files. If only one URL is configured, it syn
 - `contractor2` is parsed as a **number** (`getNum`) — it holds the contractor's EGP portion, not a name
 - `ctrInvoiceNo` is parsed as a string — the contractor's own invoice reference number
 - `ctrInvoiceSubmitDate` is parsed as a formatted date string via `formatDate`
+- `tsrSubNo` is parsed as a string — reads the `TSR Sub#` column (case-insensitive partial match via `makeColFinder`)
 
 ## Parser2 details (parser2.js)
 
@@ -197,13 +198,17 @@ Groups by **contractor** (one row per contractor). **In-House is excluded from t
 
 Invoice numbers (`ctrInvoiceNo`) are collected per contractor per period into `invOld` / `invNew` sets and displayed as comma-separated strings (or `—` if none).
 
-### Filters (5)
+### Filters (6)
 
-VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date**
+VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date** · **TSR Sub #**
 
 ### Invoice filter behavior
 
 **Exact match** — both VF Invoice # and Contractor Invoice # use strict equality (`===`), not partial match. Users select from a datalist so partial search is not needed, and partial match caused false positives (e.g. searching "22" would show "122", "227").
+
+### TSR Sub # filter behavior
+
+**Starts-with match** — the TSR Sub # input uses a dynamically-filtered datalist: on every keystroke the datalist is rebuilt to only show TSR values that **start with** the typed text (case-insensitive). The filter itself also uses `startsWith`, so typing a partial number (e.g. `"12"`) shows all rows whose `tsrSubNo` begins with `"12"`. Selecting a full value from the dropdown narrows to that prefix. `buildTsrDatalistOpts(typed)` handles both the initial render and the live rebuild.
 
 ### Contractor Invoice # datalist filtering
 
@@ -229,12 +234,13 @@ Two invoice auto-fill chains exist. Both use `syncDateSelects()` instead of `ren
 
 **`syncDateSelects()`** — updates all six date `<select>` elements (year/month/day for each date filter) from the current `state` object, calling `refreshMonthSelect` / `refreshDaySelect` to repopulate options, then setting `.value` to match state. Defined in both `financials.js` and `poc.js` with their respective element ID prefixes (`fin-` / `poc-`).
 
-### Parser fields for Contractor Invoice
+### Parser fields for Contractor Invoice and TSR
 
 | Field | Excel column | Type |
 |---|---|---|
 | `ctrInvoiceNo` | `Contractor Invoice #` | string |
 | `ctrInvoiceSubmitDate` | `Contractor Invoice Subm Date` | formatted date string |
+| `tsrSubNo` | `TSR Sub#` | string |
 
 ## POC Invoices section (poc.js)
 
@@ -308,7 +314,7 @@ Same exact-match and auto-fill behavior as TX-RF Invoice. `syncDateSelects()` is
 <div id="[fin|poc]-results">        ← KPIs + table, filled by renderResults()
 ```
 
-`renderExportCard()` is called from `render()` (not on every filter change). It rebuilds the export card HTML from `_exportInput` (the persisted input string) and re-binds events. `updateExportUI()` is the lightweight updater called on every keystroke and chip click — it syncs chips, status text, and the download button without touching the input element.
+`renderExportCard()` is called from `render()` (not on every filter change). It rebuilds the export card HTML from `_exportInput` (the persisted input string) and re-binds events. `updateExportUI()` is the lightweight updater called on every keystroke — it syncs the status text and the download button without touching the input element.
 
 ## Excel Export feature (excel-export.js)
 
@@ -317,11 +323,12 @@ Both **TX-RF Invoice** and **POC Invoices** sections expose an "Export to Excel"
 ### Selector UI
 
 - A single text input where the user types space-separated VF invoice numbers.
-- Below the input: all available VF invoice numbers rendered as clickable **chips**. Clicking a chip toggles it into/out of the text input. Active chips show a ✓ and blue highlight (`.invoice-chip-active`).
 - A live status line shows `"N invoices selected"` and warns about any typed values that don't exist in `_data`.
 - The **Download Excel** button shows the count and is disabled until at least one valid invoice is in the input.
-- **Clear** resets the input and chips.
+- **Clear** resets the input.
 - Selection state is stored in `_exportInput` (a module-level string), so it persists across filter changes but resets on page reload.
+
+> Clickable chip pills were removed — the input is the only selection mechanism.
 
 ### Excel generation (`ExcelExport.generate`)
 
@@ -378,11 +385,10 @@ Invoice # and Amount cells are **center-aligned** in both headers and data rows.
 | `.invoice-export-title` | Bold section label |
 | `.invoice-export-actions` | Button group (Clear + Download) |
 | `.invoice-export-input` | Full-width text input (`width:100%`) |
-| `.invoice-export-chips` | Scrollable flex wrap of chip pills (max-height 130px) |
-| `.invoice-chip` | Individual pill — border, rounded, hover effect |
-| `.invoice-chip-active` | Selected state — blue border/bg, ✓ prefix |
-| `.invoice-export-status` | Small status line below chips |
+| `.invoice-export-status` | Small status line below the input |
 | `.btn-sm` | Small button variant (`padding .28rem .65rem; font-size .8rem`) |
+
+> `.invoice-export-chips`, `.invoice-chip`, `.invoice-chip-active` — CSS still present in `styles.css` but no longer used; chip UI was removed.
 
 ## All Tasks section (tasks.js)
 

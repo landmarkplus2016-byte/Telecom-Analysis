@@ -774,6 +774,31 @@ td.col-center { text-align: center; }
   margin-bottom: 0;
 }
 
+/* ── TSR Sub# checkbox filter ── */
+.tsr-check-list {
+  max-height: 130px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  padding: .3rem .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .05rem;
+}
+.tsr-check-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  cursor: pointer;
+  padding: .15rem .1rem;
+  border-radius: 4px;
+  user-select: none;
+}
+.tsr-check-item:hover { background: var(--primary-light); }
+.tsr-check-item input[type="checkbox"] { cursor: pointer; flex-shrink: 0; }
+
 /* ── Info Banner ── */
 .info-banner {
   margin: 1rem;
