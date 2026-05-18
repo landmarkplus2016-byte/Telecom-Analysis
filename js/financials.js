@@ -32,6 +32,7 @@ window.FinancialsModule = (function () {
      Rules:
        totalTaxed       = newTotalPrice × 1.14  (always 14%)
        contractorTaxed  = contractor2 × 1.13    (Upper Telecom)
+                        = contractor2 × 1.14    (El-Khayal)
                         = contractor2 × 1.10    (all other non In-House)
                         = 0                     (In-House)
        lmpTaxed         = totalTaxed             (In-House)
@@ -46,7 +47,7 @@ window.FinancialsModule = (function () {
       contractorTaxed = 0;
       lmpTaxed        = totalTaxed;
     } else {
-      var cRate       = (c === 'upper telecom') ? 1.13 : 1.10;
+      var cRate       = (c === 'upper telecom') ? 1.13 : (c === 'el-khayal') ? 1.14 : 1.10;
       contractorTaxed = (r.contractor2 || 0) * cRate;
       lmpTaxed        = totalTaxed - contractorTaxed;
     }
@@ -59,6 +60,7 @@ window.FinancialsModule = (function () {
     var c = String(contractor || '').trim().toLowerCase();
     if (c === 'in-house')      return '14%';
     if (c === 'upper telecom') return '13%';
+    if (c === 'el-khayal')     return '14%';
     return '10%';
   }
 
