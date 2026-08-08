@@ -10,6 +10,7 @@ window.Dashboard = (function () {
   var state = {
     taskYear:  '', taskMonth:  '', taskDay:  '',
     period:           '',          /* '' | 'old' | 'new' — by taskDate year vs 2026 */
+    sentToInvoice:    false,       /* true → only poStatus === 'sent' */
     contractor:       '',
     acceptanceStatus: '',
     facYear:   '', facMonth:   '', facDay:   ''
@@ -172,6 +173,10 @@ window.Dashboard = (function () {
     sel.disabled  = !(year && month);
   }
 
+  function poStatusOf(r) {
+    return String(r.poStatus || '').trim().toLowerCase();
+  }
+
   /* Old = taskDate year < 2026, New = 2026+. Rows with no usable taskDate
      belong to neither — same rule the Old vs New chart uses. */
   function isNewTask(r) {
@@ -189,6 +194,7 @@ window.Dashboard = (function () {
         if (state.period === 'new' && !isNew) return false;
         if (state.period === 'old' &&  isNew) return false;
       }
+      if (state.sentToInvoice && poStatusOf(r) !== 'sent') return false;
       if (state.contractor && r.contractor !== state.contractor) return false;
       if (state.acceptanceStatus === BLANK_ACC) {
         if (filled(r.acceptanceStatus)) return false;
@@ -243,7 +249,7 @@ window.Dashboard = (function () {
     var facRecv_lmp   = 0, facRecv_ctr   = 0;
     data.forEach(function (r) {
       if (!filled(r.facDate)) return;
-      var po  = String(r.poStatus || '').trim().toLowerCase();
+      var po  = poStatusOf(r);
       var lmp = r.lmp || 0, ctr = r.contractor2 || 0;
       if (po === 'received') {
         facRecv_lmp   += lmp; facRecv_ctr   += ctr;
@@ -418,6 +424,14 @@ window.Dashboard = (function () {
               '</div>' +
             '</div>' +
 
+            '<div class="fin-filter-group">' +
+              '<label class="field-label">PO Status</label>' +
+              '<label class="filter-check' + (state.sentToInvoice ? ' checked' : '') + '" id="db-sent-wrap">' +
+                '<input type="checkbox" id="db-sent-inv"' + (state.sentToInvoice ? ' checked' : '') + '>' +
+                '<span>Sent to Invoice</span>' +
+              '</label>' +
+            '</div>' +
+
             '<div class="fin-filter-group" style="display:flex;align-items:flex-end">' +
               '<button id="db-clear-btn" class="btn btn-outline" style="width:100%">Clear</button>' +
             '</div>' +
@@ -440,6 +454,7 @@ window.Dashboard = (function () {
     var count = 0;
     if (state.taskYear || state.taskMonth || state.taskDay)  count++;
     if (state.period)                                        count++;
+    if (state.sentToInvoice)                                 count++;
     if (state.contractor)                                    count++;
     if (state.acceptanceStatus)                              count++;
     if (state.facYear || state.facMonth || state.facDay)     count++;
@@ -492,6 +507,15 @@ window.Dashboard = (function () {
       state.period = e.target.value; updateFilterBadge(); renderResults();
     });
 
+    /* Sent to Invoice */
+    var sentChk = document.getElementById('db-sent-inv');
+    if (sentChk) sentChk.addEventListener('change', function (e) {
+      state.sentToInvoice = e.target.checked;
+      var wrap = document.getElementById('db-sent-wrap');
+      if (wrap) wrap.classList.toggle('checked', state.sentToInvoice);
+      updateFilterBadge(); renderResults();
+    });
+
     /* Contractor */
     var ctrSel = document.getElementById('db-contractor');
     if (ctrSel) ctrSel.addEventListener('change', function (e) {
@@ -530,8 +554,9 @@ window.Dashboard = (function () {
     var clearBtn = document.getElementById('db-clear-btn');
     if (clearBtn) clearBtn.addEventListener('click', function () {
       state.taskYear  = ''; state.taskMonth  = ''; state.taskDay  = '';
-      state.period     = '';
-      state.contractor = '';
+      state.period        = '';
+      state.sentToInvoice = false;
+      state.contractor    = '';
       state.acceptanceStatus = '';
       state.facYear   = ''; state.facMonth   = ''; state.facDay   = '';
       render();

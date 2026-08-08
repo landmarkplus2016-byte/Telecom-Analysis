@@ -398,6 +398,29 @@ input, select, textarea { font-family: inherit; }
 }
 .filter-select:focus { outline: none; border-color: var(--primary); }
 
+/* Checkbox styled to sit in a filter row alongside .filter-select */
+.filter-check {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem .7rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: .82rem; color: #374151;
+  background: #fff;
+  cursor: pointer; user-select: none;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.filter-check:hover { border-color: var(--primary); }
+.filter-check input[type="checkbox"] {
+  cursor: pointer; flex-shrink: 0;
+  width: 15px; height: 15px;
+  accent-color: var(--primary);
+}
+.filter-check.checked {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
 .results-count { font-size: .8rem; color: var(--muted); }
 
 /* ── Table ── */

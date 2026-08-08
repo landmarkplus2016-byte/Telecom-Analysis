@@ -181,11 +181,13 @@ Every chart card shows its grand total and every category shows its own:
 - `catLabel(name, total)` — returns `[name, fmt(total)]`, a two-line axis label (name on top, its own total below)
 - Contractors Amount totals the **displayed top 10** only, not all contractors
 
-### Filters (5)
+### Filters (6)
 
-Task Date · **Old / New** · Contractor · Acceptance Status · FAC Date
+Task Date · **Old / New** · Contractor · Acceptance Status · FAC Date · **Sent to Invoice** (checkbox)
 
 > Status filter removed — dashboard is locked to Done tasks.
+
+**Sent to Invoice checkbox** — `state.sentToInvoice` (boolean). When ticked, keeps only rows whose `poStatus` is `sent` (via the `poStatusOf()` helper — trim + lowercase, shared with the FAC chart buckets). It does **not** also require a `facDate`, so its totals can exceed the FAC chart's "FAC Sent to Invoice" bar if any sent row lacks a FAC date. Rendered as `.filter-check` under a `PO Status` label; the wrapper `<label>` gets a `checked` class on toggle for the highlighted state.
 
 **Acceptance Status filter** — beyond `FAC` / `TOC` / `PAC`, the dropdown carries a **Not Accepted (Blank)** option for Done tasks whose `acceptanceStatus` is empty (done, not accepted yet). Its option value is the `BLANK_ACC` sentinel (`'__blank__'`) because a real empty string would collide with the "All" option. `applyFilters()` special-cases it (`!filled(r.acceptanceStatus)`) before the normal exact-match branch, and `buildAcceptanceDropdown()` only emits the option when such rows actually exist. These amounts have no other home in the app — no chart bucket or KPI isolates them — so the filter is the only way to size them.
 
@@ -535,6 +537,10 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 
 `.table-total-row th` — used in the All Tasks table to show the filtered total above the column headers. Styled with `var(--primary-light)` background and `var(--primary-dark)` text.
 
+### Checkbox filter
+
+`.filter-check` — a `<label>` wrapping a checkbox, padded to match `.filter-select` so it lines up in a filter row. Add the `checked` class to the label when the box is ticked for the blue highlighted state (`var(--primary-light)` background, `var(--primary-dark)` text). Used by the Dashboard's Sent to Invoice filter.
+
 ### Chart heading total
 
 `.chart-head` — flex `<h3>` inside `.chart-card` that puts the title left and the chart's grand total right. `.chart-total` — the blue pill holding that total (`var(--primary-light)` background, `var(--primary-dark)` text). Built by `chartHead()` in `dashboard.js`.
@@ -552,4 +558,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v12`
+- Current cache version: `telecom-analysis-v13`
