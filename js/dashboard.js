@@ -32,6 +32,17 @@ window.Dashboard = (function () {
     return val !== null && val !== undefined && String(val) !== '';
   }
 
+  /* Chart card heading with the chart's grand total on the right */
+  function chartHead(title, total) {
+    return '<h3 class="chart-head">' + title +
+      '<span class="chart-total">' + fmt(total) + '</span></h3>';
+  }
+
+  /* Two-line axis label: category name on top, its own total below */
+  function catLabel(name, total) {
+    return [name, fmt(total)];
+  }
+
   function uniq(arr) {
     var seen = {}, out = [];
     arr.forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
@@ -191,19 +202,22 @@ window.Dashboard = (function () {
       }
     });
 
-    /* ── Chart 2: FAC Invoicing Status ── */
+    /* ── Chart 2: FAC Invoicing Status ──
+       Three mutually exclusive buckets keyed on PO status, so the bars
+       partition the whole FAC'd amount (no row counted twice, none dropped). */
     var facNotInv_lmp = 0, facNotInv_ctr = 0;
     var facSent_lmp   = 0, facSent_ctr   = 0;
+    var facRecv_lmp   = 0, facRecv_ctr   = 0;
     data.forEach(function (r) {
       if (!filled(r.facDate)) return;
-      var po = String(r.poStatus || '').trim().toLowerCase();
-      if (po !== 'received') {
-        facNotInv_lmp += r.lmp        || 0;
-        facNotInv_ctr += r.contractor2 || 0;
-      }
-      if (po === 'sent') {
-        facSent_lmp += r.lmp        || 0;
-        facSent_ctr += r.contractor2 || 0;
+      var po  = String(r.poStatus || '').trim().toLowerCase();
+      var lmp = r.lmp || 0, ctr = r.contractor2 || 0;
+      if (po === 'received') {
+        facRecv_lmp   += lmp; facRecv_ctr   += ctr;
+      } else if (po === 'sent') {
+        facSent_lmp   += lmp; facSent_ctr   += ctr;
+      } else {
+        facNotInv_lmp += lmp; facNotInv_ctr += ctr;
       }
     });
 
@@ -222,6 +236,13 @@ window.Dashboard = (function () {
       return 'rgba(220,38,38,' + opacity + ')';
     });
 
+    /* ── Per-chart totals (title) and per-category totals (axis / legend) ── */
+    var oldTotal = oldLmp + oldCtr, newTotal = newLmp + newCtr;
+    var facNotInvTotal = facNotInv_lmp + facNotInv_ctr;
+    var facSentTotal   = facSent_lmp   + facSent_ctr;
+    var facRecvTotal   = facRecv_lmp   + facRecv_ctr;
+    var contractorsTotal = top10.reduce(function (a, e) { return a + e[1]; }, 0);
+
     container.innerHTML =
       '<div class="kpi-grid kpi-grid-3">' +
         kpiCard('Total Amount',       fmt(totalAmount),       'green') +
@@ -229,13 +250,13 @@ window.Dashboard = (function () {
         kpiCard('Contractor Portion', fmt(contractorPortion), 'red') +
       '</div>' +
       '<div class="charts-grid">' +
-        '<div class="chart-card"><h3>Old vs New Amount</h3>' +
+        '<div class="chart-card">' + chartHead('Old vs New Amount', oldTotal + newTotal) +
           '<div class="chart-wrap"><canvas id="ch-old-new"></canvas></div></div>' +
-        '<div class="chart-card"><h3>Done vs NFAC Amount</h3>' +
+        '<div class="chart-card">' + chartHead('Done vs NFAC Amount', doneAmount + nfacAmount) +
           '<div class="chart-wrap"><canvas id="ch-done-nfac"></canvas></div></div>' +
-        '<div class="chart-card"><h3>FAC Invoicing Status</h3>' +
+        '<div class="chart-card">' + chartHead('FAC Invoicing Status', facNotInvTotal + facSentTotal + facRecvTotal) +
           '<div class="chart-wrap"><canvas id="ch-fac-invoice"></canvas></div></div>' +
-        '<div class="chart-card"><h3>Contractors Amount</h3>' +
+        '<div class="chart-card">' + chartHead('Contractors Amount', contractorsTotal) +
           '<div class="chart-wrap chart-tall"><canvas id="ch-contractors"></canvas></div></div>' +
       '</div>';
 
@@ -243,7 +264,7 @@ window.Dashboard = (function () {
       var C = window.ChartsModule;
 
       C.createBar('d-old-new', 'ch-old-new',
-        ['Old Tasks (Pre-2026)', 'New Tasks (2026+)'],
+        [catLabel('Old Tasks (Pre-2026)', oldTotal), catLabel('New Tasks (2026+)', newTotal)],
         [
           {
             label: 'LMP Portion',
@@ -262,23 +283,28 @@ window.Dashboard = (function () {
       );
 
       C.createPie('d-done-nfac', 'ch-done-nfac',
-        ['Done', 'NFAC'],
+        ['Done · ' + fmt(doneAmount), 'NFAC · ' + fmt(nfacAmount)],
         [doneAmount, nfacAmount],
-        ['#16a34a', '#dc2626']
+        ['#16a34a', '#dc2626'],
+        { valueInLabel: true }
       );
 
       C.createBar('d-fac-invoice', 'ch-fac-invoice',
-        ['FAC Not Invoiced', 'FAC Sent to Invoice'],
+        [
+          catLabel('FAC Not Invoiced',    facNotInvTotal),
+          catLabel('FAC Sent to Invoice', facSentTotal),
+          catLabel('PO Received',         facRecvTotal)
+        ],
         [
           {
             label: 'LMP Portion',
-            data: [facNotInv_lmp, facSent_lmp],
+            data: [facNotInv_lmp, facSent_lmp, facRecv_lmp],
             backgroundColor: '#2563eb',
             borderRadius: 4
           },
           {
             label: 'Contractor Portion',
-            data: [facNotInv_ctr, facSent_ctr],
+            data: [facNotInv_ctr, facSent_ctr, facRecv_ctr],
             backgroundColor: '#dc2626',
             borderRadius: 4
           }
@@ -287,7 +313,7 @@ window.Dashboard = (function () {
       );
 
       C.createHBar('d-contractors', 'ch-contractors',
-        top10.map(function (e) { return e[0]; }),
+        top10.map(function (e) { return catLabel(e[0], e[1]); }),
         top10.map(function (e) { return e[1]; }),
         top10Colors,
         { egp: true }

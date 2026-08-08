@@ -285,8 +285,26 @@ input, select, textarea { font-family: inherit; }
 .chart-card h3 { font-size: .9rem; font-weight: 600; color: #374151; margin-bottom: .75rem; }
 .chart-full { grid-column: 1 / -1; }
 
+/* Chart heading with grand total on the right */
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.chart-total {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border-radius: 999px;
+  padding: .12rem .55rem;
+  white-space: nowrap;
+}
+
 .chart-wrap { position: relative; height: 220px; }
-.chart-tall  { height: 320px; }
+.chart-tall  { height: 360px; }
 
 /* ── Category Grid ── */
 .category-grid {

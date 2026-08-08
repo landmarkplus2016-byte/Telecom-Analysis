@@ -27,8 +27,20 @@ window.ChartsModule = (function () {
     window.Charts = {};
   }
 
-  /* ── Pie ── */
-  function createPie(key, canvasId, labels, data, colors) {
+  /* Labels may be arrays (multi-line axis labels) — flatten for tooltip text */
+  function labelText(label) {
+    return Array.isArray(label) ? label.join(' — ') : String(label == null ? '' : label);
+  }
+
+  function egpText(n) {
+    return 'EGP ' + Math.round(Number(n || 0)).toLocaleString('en-US');
+  }
+
+  /* ── Pie ──
+     opts.valueInLabel: the label already carries its amount, so the tooltip
+     shows only the percentage instead of repeating the value. */
+  function createPie(key, canvasId, labels, data, colors, opts) {
+    opts = opts || {};
     destroy(key);
     var ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -54,7 +66,8 @@ window.ChartsModule = (function () {
               label: function (ctx) {
                 var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
                 var pct = total ? Math.round(ctx.parsed / total * 100) : 0;
-                return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed).toLocaleString('en-US') + ' (' + pct + '%)';
+                if (opts.valueInLabel) return '  ' + labelText(ctx.label) + ' (' + pct + '%)';
+                return '  ' + labelText(ctx.label) + ': ' + egpText(ctx.parsed) + ' (' + pct + '%)';
               }
             }
           }
@@ -64,7 +77,8 @@ window.ChartsModule = (function () {
   }
 
   /* ── Doughnut ── */
-  function createDoughnut(key, canvasId, labels, data, colors) {
+  function createDoughnut(key, canvasId, labels, data, colors, opts) {
+    opts = opts || {};
     destroy(key);
     var ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -90,7 +104,8 @@ window.ChartsModule = (function () {
               label: function (ctx) {
                 var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
                 var pct = total ? Math.round(ctx.parsed / total * 100) : 0;
-                return '  ' + ctx.label + ': ' + ctx.parsed.toLocaleString() + ' (' + pct + '%)';
+                if (opts.valueInLabel) return '  ' + labelText(ctx.label) + ' (' + pct + '%)';
+                return '  ' + labelText(ctx.label) + ': ' + ctx.parsed.toLocaleString() + ' (' + pct + '%)';
               }
             }
           }
@@ -117,8 +132,10 @@ window.ChartsModule = (function () {
             : { display: false },
           tooltip: opts.egp ? {
             callbacks: {
+              title: function (items) { return items.length ? labelText(items[0].label) : ''; },
               label: function (ctx) {
-                return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed.y).toLocaleString('en-US');
+                var series = datasets.length > 1 && ctx.dataset.label ? ctx.dataset.label + ': ' : '';
+                return '  ' + series + egpText(ctx.parsed.y);
               }
             }
           } : { mode: 'index', intersect: false }
@@ -179,11 +196,11 @@ window.ChartsModule = (function () {
             : { display: false },
           tooltip: {
             callbacks: {
+              title: function (items) { return items.length ? labelText(items[0].label) : ''; },
               label: function (ctx) {
-                if (opts.egp) {
-                  return '  ' + ctx.label + ': EGP ' + Math.round(ctx.parsed.x).toLocaleString('en-US');
-                }
-                return '  ' + (ctx.dataset.label ? ctx.dataset.label + ': ' : '') + ctx.parsed.x.toLocaleString();
+                var series = datasets.length > 1 && ctx.dataset.label ? ctx.dataset.label + ': ' : '';
+                if (opts.egp) return '  ' + series + egpText(ctx.parsed.x);
+                return '  ' + series + ctx.parsed.x.toLocaleString();
               }
             }
           }

@@ -119,10 +119,14 @@ Charts are rendered inside `setTimeout(..., 60)` so the DOM has settled after `i
 
 | Helper | Signature | Notes |
 |---|---|---|
-| `createPie` | `(key, canvasId, labels, data, colors)` | Pie chart; tooltip shows `label: EGP X (pct%)` |
-| `createDoughnut` | `(key, canvasId, labels, data, colors)` | Doughnut; tooltip shows value + percentage |
-| `createBar` | `(key, canvasId, labels, datasets, opts)` | Vertical bar; `opts.egp=true` formats tooltip and y-axis as EGP |
+| `createPie` | `(key, canvasId, labels, data, colors, opts)` | Pie chart; tooltip shows `label: EGP X (pct%)`. `opts.valueInLabel=true` → the label already carries its amount, so the tooltip shows only `label (pct%)` |
+| `createDoughnut` | `(key, canvasId, labels, data, colors, opts)` | Doughnut; tooltip shows value + percentage; same `opts.valueInLabel` behavior |
+| `createBar` | `(key, canvasId, labels, datasets, opts)` | Vertical bar; `opts.egp=true` formats tooltip and y-axis as EGP. Tooltip title = category, body = `dataset label: EGP X` when >1 dataset |
 | `createHBar` | `(key, canvasId, labels, data, color, opts)` | Horizontal bar; `opts.egp=true` formats tooltip and x-axis as EGP |
+
+### Multi-line (array) axis labels
+
+Any `labels` entry may be an **array of strings** — Chart.js renders each element on its own line on the axis. The dashboard uses this to put a category's own total under its name (see `catLabel()` in `dashboard.js`). Because `ctx.label` is then an array, `charts.js` runs every tooltip label through the internal `labelText()` helper, which joins array labels with ` — `.
 
 ## Dashboard section (dashboard.js)
 
@@ -145,11 +149,32 @@ Uses `kpi-grid kpi-grid-3` — stacks to a single column on mobile (≤480px).
 | Chart | Type | Logic |
 |---|---|---|
 | Old vs New Amount | Grouped Column | Splits tasks by `taskDate` year: **Old** = pre-2026, **New** = 2026+; datasets are LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); tasks with no `taskDate` excluded |
-| Done vs NFAC Amount | Pie | Done = `taskDate` filled; NFAC = `facDate` empty |
-| FAC Invoicing Status | Grouped Column | LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); categories are FAC Not Invoiced and FAC Sent to Invoice |
+| Done vs NFAC Amount | Pie | Done = `taskDate` filled; NFAC = `facDate` empty. **Note:** these two slices overlap — a Done task with no FAC date is counted in both |
+| FAC Invoicing Status | Grouped Column | LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); rows must have a `facDate`, then split into **three mutually exclusive** buckets by `poStatus` (trimmed, lowercased) |
 | Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; bars use red shades (`rgba(220,38,38,...)`) with opacity gradient |
 
 Chart order: Old vs New → Done vs NFAC → FAC Invoicing Status → Contractors Amount.
+
+#### FAC Invoicing Status buckets
+
+**Architecture decision:** the three buckets are `if / else if / else` — every FAC'd row lands in exactly one, so the bars partition the whole FAC'd amount.
+
+| Bucket | Rule |
+|---|---|
+| PO Received | `poStatus === 'received'` |
+| FAC Sent to Invoice | `poStatus === 'sent'` |
+| FAC Not Invoiced | anything else — including blank `poStatus` |
+
+> The earlier version used two overlapping `if` statements (`po !== 'received'` and `po === 'sent'`), so every Sent row was counted in **both** bars and Received rows were dropped entirely. Do not reintroduce that shape.
+
+#### Chart totals
+
+Every chart card shows its grand total and every category shows its own:
+
+- `chartHead(title, total)` — renders `<h3 class="chart-head">` with the chart's grand total in a `.chart-total` pill on the right
+- `catLabel(name, total)` — returns `[name, fmt(total)]`, a two-line axis label (name on top, its own total below)
+- The Done vs NFAC pie carries its per-slice totals in the legend label text (`'Done · EGP X'`) and is created with `{ valueInLabel: true }`
+- Contractors Amount totals the **displayed top 10** only, not all contractors
 
 ### Filters (4)
 
@@ -501,6 +526,12 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 
 `.table-total-row th` — used in the All Tasks table to show the filtered total above the column headers. Styled with `var(--primary-light)` background and `var(--primary-dark)` text.
 
+### Chart heading total
+
+`.chart-head` — flex `<h3>` inside `.chart-card` that puts the title left and the chart's grand total right. `.chart-total` — the blue pill holding that total (`var(--primary-light)` background, `var(--primary-dark)` text). Built by `chartHead()` in `dashboard.js`.
+
+`.chart-tall` is `360px` (raised from `320px`) to fit the two-line contractor labels.
+
 ### KPI subtitle
 
 `.kpi-subtitle` — small muted line rendered below `.kpi-value` inside a KPI card. Used in the TX-RF Invoice and POC Invoices sections to show the Old / New breakdown beneath each card's total. Pass as the 4th argument to `kpiCard()`.
@@ -512,4 +543,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v9`
+- Current cache version: `telecom-analysis-v10`
