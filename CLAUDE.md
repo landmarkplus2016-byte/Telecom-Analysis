@@ -187,6 +187,8 @@ Task Date · **Old / New** · Contractor · Acceptance Status · FAC Date
 
 > Status filter removed — dashboard is locked to Done tasks.
 
+**Acceptance Status filter** — beyond `FAC` / `TOC` / `PAC`, the dropdown carries a **Not Accepted (Blank)** option for Done tasks whose `acceptanceStatus` is empty (done, not accepted yet). Its option value is the `BLANK_ACC` sentinel (`'__blank__'`) because a real empty string would collide with the "All" option. `applyFilters()` special-cases it (`!filled(r.acceptanceStatus)`) before the normal exact-match branch, and `buildAcceptanceDropdown()` only emits the option when such rows actually exist. These amounts have no other home in the app — no chart bucket or KPI isolates them — so the filter is the only way to size them.
+
 **Old / New filter** — `state.period` is `''` (All Tasks) / `'old'` (Pre-2026) / `'new'` (2026+), decided by `isNewTask(r)`, which reads the `taskDate` year against 2026. `isNewTask` returns `null` for rows with no parseable `taskDate`; those rows are **excluded** whenever the filter is active — the same rule the Old vs New chart applies. The `<select>` is built inline (not via `buildDropdown`) because its option values differ from their labels.
 
 All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
@@ -550,4 +552,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v11`
+- Current cache version: `telecom-analysis-v12`

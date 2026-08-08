@@ -17,6 +17,10 @@ window.Dashboard = (function () {
 
   var _data = [];
 
+  /* Sentinel for the "Acceptance Status is blank" filter option — a real
+     empty value would collide with "All". */
+  var BLANK_ACC = '__blank__';
+
   /* ── Helpers ── */
   function fmt(n) {
     return 'EGP ' + Math.round(Number(n || 0)).toLocaleString('en-US');
@@ -133,6 +137,21 @@ window.Dashboard = (function () {
     return html + '</select>';
   }
 
+  /* Acceptance Status dropdown — carries an extra option for rows whose
+     Acceptance Status is blank (Done but not accepted yet). Built inline
+     because that option's value differs from its label. */
+  function buildAcceptanceDropdown(id, statuses, hasBlank, selected) {
+    var html = '<select id="' + id + '" class="filter-select"><option value="">All</option>';
+    statuses.forEach(function (s) {
+      html += '<option value="' + s + '"' + (selected === s ? ' selected' : '') + '>' + s + '</option>';
+    });
+    if (hasBlank) {
+      html += '<option value="' + BLANK_ACC + '"' + (selected === BLANK_ACC ? ' selected' : '') +
+              '>Not Accepted (Blank)</option>';
+    }
+    return html + '</select>';
+  }
+
   function refreshMonthSelect(id, field, year) {
     var sel = document.getElementById(id);
     if (!sel) return;
@@ -170,8 +189,12 @@ window.Dashboard = (function () {
         if (state.period === 'new' && !isNew) return false;
         if (state.period === 'old' &&  isNew) return false;
       }
-      if (state.contractor       && r.contractor       !== state.contractor)       return false;
-      if (state.acceptanceStatus && r.acceptanceStatus !== state.acceptanceStatus) return false;
+      if (state.contractor && r.contractor !== state.contractor) return false;
+      if (state.acceptanceStatus === BLANK_ACC) {
+        if (filled(r.acceptanceStatus)) return false;
+      } else if (state.acceptanceStatus && r.acceptanceStatus !== state.acceptanceStatus) {
+        return false;
+      }
       if (!dateMatchesFilter(r.taskDate, state.taskYear,  state.taskMonth,  state.taskDay))  return false;
       if (!dateMatchesFilter(r.facDate,  state.facYear,   state.facMonth,   state.facDay))   return false;
       return true;
@@ -336,6 +359,10 @@ window.Dashboard = (function () {
 
     var contractors = uniq(_data.map(function (r) { return r.contractor; }));
     var accStatuses = uniq(_data.map(function (r) { return r.acceptanceStatus; }));
+    /* Done tasks with no Acceptance Status — offered as an explicit option */
+    var hasBlankAcc = _data.some(function (r) {
+      return r.status === 'Done' && !filled(r.acceptanceStatus);
+    });
 
     el.innerHTML =
       '<div class="section-header"><h2>📊 Dashboard</h2></div>' +
@@ -379,7 +406,7 @@ window.Dashboard = (function () {
 
             '<div class="fin-filter-group">' +
               '<label class="field-label">Acceptance Status</label>' +
-              buildDropdown('db-acc-status', accStatuses, state.acceptanceStatus, 'All') +
+              buildAcceptanceDropdown('db-acc-status', accStatuses, hasBlankAcc, state.acceptanceStatus) +
             '</div>' +
 
             '<div class="fin-filter-group">' +
