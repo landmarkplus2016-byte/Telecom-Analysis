@@ -177,6 +177,13 @@ window.Dashboard = (function () {
     return String(r.poStatus || '').trim().toLowerCase();
   }
 
+  /* In-House has no contractor portion — excluded from the Contractors chart,
+     same rule the TX-RF Invoice and POC tables apply. Punctuation and spacing
+     are stripped so "In-House", "IN-House", "In House" and "Inhouse" all match. */
+  function isInHouse(name) {
+    return String(name || '').toLowerCase().replace(/[\s_-]+/g, '') === 'inhouse';
+  }
+
   /* Old = taskDate year < 2026, New = 2026+. Rows with no usable taskDate
      belong to neither — same rule the Old vs New chart uses. */
   function isNewTask(r) {
@@ -264,7 +271,7 @@ window.Dashboard = (function () {
     var cMap = {};
     data.forEach(function (r) {
       var name = String(r.contractor || '').trim();
-      if (!name) return;
+      if (!name || isInHouse(name)) return;
       cMap[name] = (cMap[name] || 0) + (r.contractor2 || 0);
     });
     var cArr = Object.keys(cMap).map(function (k) { return [k, cMap[k]]; });

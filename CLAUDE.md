@@ -155,7 +155,7 @@ Uses `kpi-grid kpi-grid-3` — stacks to a single column on mobile (≤480px).
 |---|---|---|
 | Old vs New Amount | Grouped Column | Splits tasks by `taskDate` year: **Old** = pre-2026, **New** = 2026+; datasets are LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); tasks with no `taskDate` excluded |
 | FAC Invoicing Status | Grouped Column | LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); rows must have a `facDate`, then split into **three mutually exclusive** buckets by `poStatus` (trimmed, lowercased) |
-| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; bars use red shades (`rgba(220,38,38,...)`) with opacity gradient. Spans the full grid width (`.chart-full`) since it is the lone card on its row |
+| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; **In-House excluded** (see below); bars use red shades (`rgba(220,38,38,...)`) with opacity gradient. Spans the full grid width (`.chart-full`) since it is the lone card on its row |
 
 Chart order: Old vs New → FAC Invoicing Status → Contractors Amount (full width).
 
@@ -172,6 +172,12 @@ Chart order: Old vs New → FAC Invoicing Status → Contractors Amount (full wi
 | FAC Not Invoiced | anything else — including blank `poStatus` |
 
 > The earlier version used two overlapping `if` statements (`po !== 'received'` and `po === 'sent'`), so every Sent row was counted in **both** bars and Received rows were dropped entirely. Do not reintroduce that shape.
+
+#### In-House exclusion (Contractors Amount)
+
+In-House always has a zero contractor portion, so it only ever drew an empty bar — `isInHouse(name)` in `dashboard.js` drops it before grouping. The check lowercases and strips spaces, hyphens and underscores, so `In-House`, `IN-House`, `In House` and `Inhouse` all match. Its amounts still count in the KPI cards and the other charts — this is the same rule the TX-RF Invoice and POC contractor tables apply.
+
+> `financials.js`, `poc.js` and `excel-export.js` use a stricter `trim().toLowerCase() === 'in-house'` test, which misses spacing variants. Worth unifying on `isInHouse()` if the sheet's spelling ever drifts.
 
 #### Chart totals
 
@@ -558,4 +564,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v13`
+- Current cache version: `telecom-analysis-v14`
