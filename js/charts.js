@@ -32,6 +32,15 @@ window.ChartsModule = (function () {
     return Array.isArray(label) ? label.join(' — ') : String(label == null ? '' : label);
   }
 
+  /* Tooltip title from the RAW label — Chart.js has already comma-joined
+     array labels by the time they reach item.label. Returning an array keeps
+     each line separate in the tooltip. */
+  function tooltipTitle(items) {
+    if (!items.length) return '';
+    var raw = items[0].chart.data.labels[items[0].dataIndex];
+    return Array.isArray(raw) ? raw.slice() : labelText(items[0].label);
+  }
+
   function egpText(n) {
     return 'EGP ' + Math.round(Number(n || 0)).toLocaleString('en-US');
   }
@@ -132,7 +141,7 @@ window.ChartsModule = (function () {
             : { display: false },
           tooltip: opts.egp ? {
             callbacks: {
-              title: function (items) { return items.length ? labelText(items[0].label) : ''; },
+              title: tooltipTitle,
               label: function (ctx) {
                 var series = datasets.length > 1 && ctx.dataset.label ? ctx.dataset.label + ': ' : '';
                 return '  ' + series + egpText(ctx.parsed.y);
@@ -196,7 +205,7 @@ window.ChartsModule = (function () {
             : { display: false },
           tooltip: {
             callbacks: {
-              title: function (items) { return items.length ? labelText(items[0].label) : ''; },
+              title: tooltipTitle,
               label: function (ctx) {
                 var series = datasets.length > 1 && ctx.dataset.label ? ctx.dataset.label + ': ' : '';
                 if (opts.egp) return '  ' + series + egpText(ctx.parsed.x);

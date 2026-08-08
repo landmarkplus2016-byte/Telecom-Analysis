@@ -9,6 +9,7 @@ window.Dashboard = (function () {
   /* ── Filter state ── */
   var state = {
     taskYear:  '', taskMonth:  '', taskDay:  '',
+    period:           '',          /* '' | 'old' | 'new' — by taskDate year vs 2026 */
     contractor:       '',
     acceptanceStatus: '',
     facYear:   '', facMonth:   '', facDay:   ''
@@ -152,10 +153,23 @@ window.Dashboard = (function () {
     sel.disabled  = !(year && month);
   }
 
+  /* Old = taskDate year < 2026, New = 2026+. Rows with no usable taskDate
+     belong to neither — same rule the Old vs New chart uses. */
+  function isNewTask(r) {
+    var p = parseDateParts(r.taskDate);
+    return p ? p.year >= 2026 : null;
+  }
+
   /* ── Filter logic ── */
   function applyFilters() {
     return _data.filter(function (r) {
       if (r.status !== 'Done') return false;
+      if (state.period) {
+        var isNew = isNewTask(r);
+        if (isNew === null) return false;
+        if (state.period === 'new' && !isNew) return false;
+        if (state.period === 'old' &&  isNew) return false;
+      }
       if (state.contractor       && r.contractor       !== state.contractor)       return false;
       if (state.acceptanceStatus && r.acceptanceStatus !== state.acceptanceStatus) return false;
       if (!dateMatchesFilter(r.taskDate, state.taskYear,  state.taskMonth,  state.taskDay))  return false;
@@ -178,14 +192,10 @@ window.Dashboard = (function () {
 
     /* ── KPI sums ── */
     var totalAmount = 0, lmpPortion = 0, contractorPortion = 0;
-    var doneAmount  = 0, nfacAmount = 0;
     data.forEach(function (r) {
-      var price = r.newTotalPrice || 0;
-      totalAmount       += price;
-      lmpPortion        += r.lmp || 0;
+      totalAmount       += r.newTotalPrice || 0;
+      lmpPortion        += r.lmp         || 0;
       contractorPortion += r.contractor2 || 0;
-      if (filled(r.taskDate)) doneAmount += price;
-      if (!filled(r.facDate)) nfacAmount += price;
     });
 
     /* ── Chart 1: Old vs New Amount (cutoff 1-Jan-2026) ── */
@@ -252,11 +262,9 @@ window.Dashboard = (function () {
       '<div class="charts-grid">' +
         '<div class="chart-card">' + chartHead('Old vs New Amount', oldTotal + newTotal) +
           '<div class="chart-wrap"><canvas id="ch-old-new"></canvas></div></div>' +
-        '<div class="chart-card">' + chartHead('Done vs NFAC Amount', doneAmount + nfacAmount) +
-          '<div class="chart-wrap"><canvas id="ch-done-nfac"></canvas></div></div>' +
         '<div class="chart-card">' + chartHead('FAC Invoicing Status', facNotInvTotal + facSentTotal + facRecvTotal) +
           '<div class="chart-wrap"><canvas id="ch-fac-invoice"></canvas></div></div>' +
-        '<div class="chart-card">' + chartHead('Contractors Amount', contractorsTotal) +
+        '<div class="chart-card chart-full">' + chartHead('Contractors Amount', contractorsTotal) +
           '<div class="chart-wrap chart-tall"><canvas id="ch-contractors"></canvas></div></div>' +
       '</div>';
 
@@ -280,13 +288,6 @@ window.Dashboard = (function () {
           }
         ],
         { egp: true }
-      );
-
-      C.createPie('d-done-nfac', 'ch-done-nfac',
-        ['Done · ' + fmt(doneAmount), 'NFAC · ' + fmt(nfacAmount)],
-        [doneAmount, nfacAmount],
-        ['#16a34a', '#dc2626'],
-        { valueInLabel: true }
       );
 
       C.createBar('d-fac-invoice', 'ch-fac-invoice',
@@ -363,6 +364,15 @@ window.Dashboard = (function () {
             '</div>' +
 
             '<div class="fin-filter-group">' +
+              '<label class="field-label">Old / New</label>' +
+              '<select id="db-period" class="filter-select">' +
+                '<option value=""'    + (state.period === ''    ? ' selected' : '') + '>All Tasks</option>' +
+                '<option value="old"' + (state.period === 'old' ? ' selected' : '') + '>Old (Pre-2026)</option>' +
+                '<option value="new"' + (state.period === 'new' ? ' selected' : '') + '>New (2026+)</option>' +
+              '</select>' +
+            '</div>' +
+
+            '<div class="fin-filter-group">' +
               '<label class="field-label">Contractor</label>' +
               buildDropdown('db-contractor', contractors, state.contractor, 'All Contractors') +
             '</div>' +
@@ -402,6 +412,7 @@ window.Dashboard = (function () {
     if (!badge) return;
     var count = 0;
     if (state.taskYear || state.taskMonth || state.taskDay)  count++;
+    if (state.period)                                        count++;
     if (state.contractor)                                    count++;
     if (state.acceptanceStatus)                              count++;
     if (state.facYear || state.facMonth || state.facDay)     count++;
@@ -448,6 +459,12 @@ window.Dashboard = (function () {
       state.taskDay = e.target.value; updateFilterBadge(); renderResults();
     });
 
+    /* Old / New */
+    var periodSel = document.getElementById('db-period');
+    if (periodSel) periodSel.addEventListener('change', function (e) {
+      state.period = e.target.value; updateFilterBadge(); renderResults();
+    });
+
     /* Contractor */
     var ctrSel = document.getElementById('db-contractor');
     if (ctrSel) ctrSel.addEventListener('change', function (e) {
@@ -486,6 +503,7 @@ window.Dashboard = (function () {
     var clearBtn = document.getElementById('db-clear-btn');
     if (clearBtn) clearBtn.addEventListener('click', function () {
       state.taskYear  = ''; state.taskMonth  = ''; state.taskDay  = '';
+      state.period     = '';
       state.contractor = '';
       state.acceptanceStatus = '';
       state.facYear   = ''; state.facMonth   = ''; state.facDay   = '';

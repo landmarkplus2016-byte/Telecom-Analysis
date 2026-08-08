@@ -126,7 +126,12 @@ Charts are rendered inside `setTimeout(..., 60)` so the DOM has settled after `i
 
 ### Multi-line (array) axis labels
 
-Any `labels` entry may be an **array of strings** — Chart.js renders each element on its own line on the axis. The dashboard uses this to put a category's own total under its name (see `catLabel()` in `dashboard.js`). Because `ctx.label` is then an array, `charts.js` runs every tooltip label through the internal `labelText()` helper, which joins array labels with ` — `.
+Any `labels` entry may be an **array of strings** — Chart.js renders each element on its own line on the axis. The dashboard uses this to put a category's own total under its name (see `catLabel()` in `dashboard.js`).
+
+Two internal helpers in `charts.js` keep tooltips readable with array labels:
+
+- `labelText(label)` — joins an array label with ` — `, passes strings through
+- `tooltipTitle(items)` — the `title` callback for both bar helpers. It reads the **raw** label from `items[0].chart.data.labels[dataIndex]`, because Chart.js has already comma-joined the array by the time it reaches `item.label` (which rendered as `El-Khayal,EGP 11,454,946`). Returning the array keeps each line separate in the tooltip.
 
 ## Dashboard section (dashboard.js)
 
@@ -149,11 +154,12 @@ Uses `kpi-grid kpi-grid-3` — stacks to a single column on mobile (≤480px).
 | Chart | Type | Logic |
 |---|---|---|
 | Old vs New Amount | Grouped Column | Splits tasks by `taskDate` year: **Old** = pre-2026, **New** = 2026+; datasets are LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); tasks with no `taskDate` excluded |
-| Done vs NFAC Amount | Pie | Done = `taskDate` filled; NFAC = `facDate` empty. **Note:** these two slices overlap — a Done task with no FAC date is counted in both |
 | FAC Invoicing Status | Grouped Column | LMP Portion (blue `#2563eb`) and Contractor Portion (red `#dc2626`); rows must have a `facDate`, then split into **three mutually exclusive** buckets by `poStatus` (trimmed, lowercased) |
-| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; bars use red shades (`rgba(220,38,38,...)`) with opacity gradient |
+| Contractors Amount | HBar | Group by `contractor` name, sum `contractor2` amounts, top 10 desc; bars use red shades (`rgba(220,38,38,...)`) with opacity gradient. Spans the full grid width (`.chart-full`) since it is the lone card on its row |
 
-Chart order: Old vs New → Done vs NFAC → FAC Invoicing Status → Contractors Amount.
+Chart order: Old vs New → FAC Invoicing Status → Contractors Amount (full width).
+
+> **Done vs NFAC Amount (Pie) was removed.** Its two slices overlapped — the dashboard is already Done-only, so every NFAC row was also inside Done, making the percentages meaningless. FAC Invoicing Status took its grid slot.
 
 #### FAC Invoicing Status buckets
 
@@ -173,14 +179,15 @@ Every chart card shows its grand total and every category shows its own:
 
 - `chartHead(title, total)` — renders `<h3 class="chart-head">` with the chart's grand total in a `.chart-total` pill on the right
 - `catLabel(name, total)` — returns `[name, fmt(total)]`, a two-line axis label (name on top, its own total below)
-- The Done vs NFAC pie carries its per-slice totals in the legend label text (`'Done · EGP X'`) and is created with `{ valueInLabel: true }`
 - Contractors Amount totals the **displayed top 10** only, not all contractors
 
-### Filters (4)
+### Filters (5)
 
-Task Date · Contractor · Acceptance Status · FAC Date
+Task Date · **Old / New** · Contractor · Acceptance Status · FAC Date
 
 > Status filter removed — dashboard is locked to Done tasks.
+
+**Old / New filter** — `state.period` is `''` (All Tasks) / `'old'` (Pre-2026) / `'new'` (2026+), decided by `isNewTask(r)`, which reads the `taskDate` year against 2026. `isNewTask` returns `null` for rows with no parseable `taskDate`; those rows are **excluded** whenever the filter is active — the same rule the Old vs New chart applies. The `<select>` is built inline (not via `buildDropdown`) because its option values differ from their labels.
 
 All EGP values formatted as `EGP X,XXX,XXX` (prefix, no decimals).
 
@@ -543,4 +550,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v10`
+- Current cache version: `telecom-analysis-v11`
