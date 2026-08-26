@@ -221,6 +221,10 @@ Each card shows the total value as the main figure, with an **Old / New breakdow
 
 `kpiCard(label, value, cls, subtitle)` — the 4th `subtitle` parameter is optional; renders as `.kpi-subtitle` (small muted text below the value).
 
+**Architecture decision: the Old / New subtitle must reconcile with the headline above it.** Both are summed from `filtered` in the same loop — In-House included — into `kpiAmtOld/New`, `kpiLmpOld/New`, `kpiC2Old/New`. The contractor table's `totC2Old` / `totC2New` are summed separately from `rows` (In-House already stripped) and feed only the tfoot.
+
+> The earlier version derived the KPI subtitles from `rows`, so Total Amount and LMP Portion showed an Old + New that fell short of the headline by exactly the In-House amount (Contractor Portion reconciled by accident, since In-House's contractor portion is 0). Do not reintroduce that shape — subtitles come from `filtered`, tfoot comes from `rows`.
+
 ### Contractor table
 
 Groups by **contractor** (one row per contractor). **In-House is excluded from the table** — its contractor portion is always zero and it clutters the view. In-House amounts are still included in KPI card totals.

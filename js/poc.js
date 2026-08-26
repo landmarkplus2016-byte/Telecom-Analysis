@@ -419,13 +419,21 @@ window.POCModule = (function () {
     var countEl = document.getElementById('poc-record-count');
     if (countEl) countEl.textContent = 'Showing ' + filtered.length.toLocaleString() + ' of ' + _data.length.toLocaleString() + ' records';
 
-    /* KPI totals */
+    /* KPI totals — Old/New splits summed from `filtered` (In-House included) so
+       each subtitle reconciles with the headline above it. The contractor table
+       below keeps its own In-House-free totals for the tfoot. */
     var totalAmount = 0, totalLMP = 0, totalC2 = 0;
+    var kpiAmtOld = 0, kpiAmtNew = 0, kpiLmpOld = 0, kpiLmpNew = 0, kpiC2Old = 0, kpiC2New = 0;
     filtered.forEach(function (r) {
       var t = calcTax(r);
       totalAmount += t.totalTaxed;
       totalLMP    += t.lmpTaxed;
       totalC2     += t.contractorTaxed;
+      if (isNewRow(r)) {
+        kpiAmtNew += t.totalTaxed; kpiLmpNew += t.lmpTaxed; kpiC2New += t.contractorTaxed;
+      } else {
+        kpiAmtOld += t.totalTaxed; kpiLmpOld += t.lmpTaxed; kpiC2Old += t.contractorTaxed;
+      }
     });
 
     /* Group by contractor */
@@ -457,11 +465,11 @@ window.POCModule = (function () {
       .filter(function (r) { return r.name.trim().toLowerCase() !== 'in-house'; })
       .sort(function (a, b) { return b.amount - a.amount; });
 
-    var totAmtOld = 0, totAmtNew = 0, totLmpOld = 0, totLmpNew = 0, totC2Old = 0, totC2New = 0;
+    /* tfoot totals — In-House excluded, matching the rows above */
+    var totC2Old = 0, totC2New = 0;
     rows.forEach(function (r) {
-      totAmtOld += r.amountOld; totAmtNew += r.amountNew;
-      totLmpOld += r.lmpOld;   totLmpNew += r.lmpNew;
-      totC2Old  += r.c2Old;    totC2New  += r.c2New;
+      totC2Old += r.c2Old;
+      totC2New += r.c2New;
     });
 
     /* Refresh contractor datalist to match active VF invoice filter */
@@ -479,13 +487,13 @@ window.POCModule = (function () {
       '<div class="kpi-grid kpi-grid-3">' +
         kpiCard('Total Amount <span class="kpi-tax-note">+14% tax</span>',
                 fmt(totalAmount) + ' EGP', 'green',
-                'Old: ' + fmt(totAmtOld) + ' &nbsp;|&nbsp; New: ' + fmt(totAmtNew)) +
+                'Old: ' + fmt(kpiAmtOld) + ' &nbsp;|&nbsp; New: ' + fmt(kpiAmtNew)) +
         kpiCard('LMP Portion <span class="kpi-tax-note">total − contractor</span>',
                 fmt(totalLMP) + ' EGP', 'blue',
-                'Old: ' + fmt(totLmpOld) + ' &nbsp;|&nbsp; New: ' + fmt(totLmpNew)) +
+                'Old: ' + fmt(kpiLmpOld) + ' &nbsp;|&nbsp; New: ' + fmt(kpiLmpNew)) +
         kpiCard('Contractor Portion <span class="kpi-tax-note">+10% / 13% tax</span>',
                 fmt(totalC2) + ' EGP', 'red',
-                'Old: ' + fmt(totC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(totC2New)) +
+                'Old: ' + fmt(kpiC2Old) + ' &nbsp;|&nbsp; New: ' + fmt(kpiC2New)) +
       '</div>' +
 
       '<div class="table-container table-bordered">' +

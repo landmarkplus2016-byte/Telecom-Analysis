@@ -1,4 +1,4 @@
-const CACHE_NAME = 'telecom-analysis-v14';
+const CACHE_NAME = 'telecom-analysis-v15';
 
 // Relative paths work on both file:// and any HTTPS subdirectory (GitHub Pages, etc.)
 const CACHE_FILES = [
