@@ -100,6 +100,7 @@ The single Sync button handles both files. If only one URL is configured, it syn
 - `ctrInvoiceNo` is parsed as a string — the contractor's own invoice reference number
 - `ctrInvoiceSubmitDate` is parsed as a formatted date string via `formatDate`
 - `tsrSubNo` is parsed as a string — reads the `TSR Sub#` column (case-insensitive partial match via `makeColFinder`)
+- `vfInvoiceSubmissionDate` reads the **`1st Receiving Date`** column, not `VF Invoice Submission Date` — the sheet only fills that column for a few invoices. The TX-RF Invoice filter is labelled "1st Receiving Date" and the Excel export title says "1st Receiving:"
 
 ## Parser2 details (parser2.js)
 
@@ -568,4 +569,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v14`
+- Current cache version: `telecom-analysis-v16`

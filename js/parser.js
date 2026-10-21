@@ -101,7 +101,9 @@ window.Parser = (function () {
       remainingAmounts: ci('Remaining Amounts'), lmp: ci('LMP'),
       lmpPortion: ci('LMP Portion'), contractorPortion: ci('Contractor Portion'),
       vfInvoiceNo:             ci('VF Invoice #'),
-      vfInvoiceSubmissionDate: ci('VF Invoice Submission Date'),
+      // Invoice date filter reads "1st Receiving Date" — the sheet's own
+      // "VF Invoice Submission Date" column is only filled for a few invoices
+      vfInvoiceSubmissionDate: ci('1st Receiving Date'),
       cashReceivedDate:        ci('Cash Received Date'),
       contractor2:             ci('Contractor2'),
       ctrInvoiceNo:            ci('Contractor Invoice #'),

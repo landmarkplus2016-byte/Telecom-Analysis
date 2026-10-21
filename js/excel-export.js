@@ -3,7 +3,7 @@
    Generates one styled Excel sheet with all selected VF
    invoices stacked vertically using ExcelJS (full styling).
    Exposes: window.ExcelExport.generate(selectedNos, allData, opts)
-   opts: { filename, isNew(row), calcTax(row), contractorTaxLabel(name) }
+   opts: { filename, isNew(row), calcTax(row), contractorTaxLabel(name), dateLabel }
    Requires: ExcelJS (window.ExcelJS) loaded before this script.
    ========================================================= */
 
@@ -53,7 +53,7 @@ window.ExcelExport = (function () {
   var FWT = { bold: true,  color: { argb: C.white }, size: 10 };  // white bold (total)
 
   /* ── Build one invoice block, returns next free row ── */
-  function addBlock(ws, startRow, invoiceNo, allData, isNew, calcTax, ctLabel) {
+  function addBlock(ws, startRow, invoiceNo, allData, isNew, calcTax, ctLabel, dateLabel) {
     var R = startRow;
 
     /* Find meta from first matching row */
@@ -64,7 +64,7 @@ window.ExcelExport = (function () {
     var vfDate = (meta && meta.vfInvoiceSubmissionDate) || '';
     var crDate = (meta && meta.cashReceivedDate)        || '';
     var title  = 'Invoice: ' + invoiceNo;
-    if (vfDate) title += '     VF Submit: ' + vfDate;
+    if (vfDate) title += '     ' + dateLabel + ': ' + vfDate;
     if (crDate) title += '     Cash Received: ' + crDate;
 
     /* ── Title row — green, white text ── */
@@ -192,7 +192,7 @@ window.ExcelExport = (function () {
     var R = 1;
     selectedNos.forEach(function (invoiceNo, idx) {
       if (idx > 0) R += 2; // blank separator between blocks
-      R = addBlock(ws, R, invoiceNo, allData, opts.isNew, opts.calcTax, opts.contractorTaxLabel);
+      R = addBlock(ws, R, invoiceNo, allData, opts.isNew, opts.calcTax, opts.contractorTaxLabel, opts.dateLabel || 'VF Submit');
     });
 
     /* Download */

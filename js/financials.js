@@ -539,7 +539,8 @@ window.FinancialsModule = (function () {
         filename: 'TX-RF-Invoices.xlsx',
         isNew: function (r) { var p = parseDateParts(r.taskDate); return !!(p && p.year === 2026); },
         calcTax: calcTax,
-        contractorTaxLabel: contractorTaxLabel
+        contractorTaxLabel: contractorTaxLabel,
+        dateLabel: '1st Receiving'
       });
     });
   }
@@ -601,9 +602,9 @@ window.FinancialsModule = (function () {
             '<input type="text" id="fin-vf-invoice" class="search-input" list="fin-invoice-datalist" placeholder="Search or select invoice #…" value="' + escHtml(state.vfInvoiceNo) + '">' +
           '</div>' +
 
-          /* VF Invoice Submission Date */
+          /* 1st Receiving Date (stored as vfInvoiceSubmissionDate) */
           '<div class="fin-filter-group">' +
-            '<label class="field-label">VF Invoice Submission Date</label>' +
+            '<label class="field-label">1st Receiving Date</label>' +
             '<div class="date-group">' +
               buildYearOpts('fin-vs-year',  vsYears,  state.vfSubmitYear)  +
               buildMonthOpts('fin-vs-month', vsMonths, state.vfSubmitYear,  state.vfSubmitMonth) +
