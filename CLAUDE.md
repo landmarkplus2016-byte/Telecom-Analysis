@@ -245,9 +245,9 @@ Groups by **contractor** (one row per contractor). **In-House is excluded from t
 
 Invoice numbers (`ctrInvoiceNo`) are collected per contractor per period into `invOld` / `invNew` sets and displayed as comma-separated strings (or `—` if none).
 
-### Filters (6)
+### Filters (7)
 
-VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor Invoice #** · **Contractor Invoice Subm Date** · **TSR Sub #**
+VF Invoice # · 1st Receiving Date · Cash Received Date · **Contractor** · **Contractor Invoice #** (multi-select) · **Contractor Invoice Subm Date** · **TSR Sub #**
 
 ### Invoice filter behavior
 
@@ -261,6 +261,7 @@ VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor
 
 In both TX-RF Invoice and POC Invoices, Contractor Invoice # is a **multi-select checklist** (`state.ctrInvoiceNos`, an array; empty = all), not a datalist input. It is a button (`#fin-ctr-ms-btn` / `#poc-ctr-ms-btn`) that opens a panel with a search box, **Select shown** / **Clear** actions, and one checkbox per invoice. Rows pass when their `ctrInvoiceNo` is in the selected set. The options are sorted with a numeric-aware sort (2 before 10). CSS: `.multi-select*` in `styles.css`. The code is duplicated in `financials.js` and `poc.js` with their `fin-` / `poc-` ID prefixes, the same way `syncDateSelects()` is.
 
+- **Contractor dropdown** (`#fin-contractor` / `#poc-contractor`, `state.contractor`): filters the results and narrows the option list to that contractor's invoices. Changing it drops any ticked invoices that do not belong to the new contractor.
 - **Option list:** narrowed to the active VF Invoice #, but **only when the user typed that VF #**. `ctrInvoiceSource()` ignores a VF # that was auto-filled from a contractor pick, because otherwise the list would shrink to that one VF invoice and the user could not pick a second one. `refreshCtrMultiSelect()` rebuilds the list from `renderResults()` on every filter change, keeping the search text and scroll position.
 - **Auto-fill:** with exactly **one** pick, the single-invoice auto-fill below still runs, and `_ctrAutoFilled` records that it did. With two or more picks (or none), the auto-filled VF # and dates are cleared, because they belong to a single invoice and would filter out every other pick. Typing in the VF Invoice # input resets `_ctrAutoFilled`.
 - **Closing the panel:** an outside click closes it, via a document listener bound once (`_docClickBound`) that looks up the box fresh each time. Escape also closes it.
@@ -346,9 +347,9 @@ Identical to TX-RF Invoice tab:
 
 Same 3-level header structure as TX-RF Invoice. **In-House excluded from the table** (same rule as TX-RF Invoice — zero contractor portion, excluded for clarity; still counted in KPI totals).
 
-### Filters (5)
+### Filters (6)
 
-VF Invoice # · VF Invoice Submission Date · Cash Received Date · Contractor Invoice # · Contractor Invoice Subm Date
+VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor** · Contractor Invoice # (multi-select) · Contractor Invoice Subm Date
 
 Same exact-match and auto-fill behavior as TX-RF Invoice. `syncDateSelects()` is used (not `render()`) to avoid focus loss.
 
@@ -570,4 +571,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v18`
+- Current cache version: `telecom-analysis-v19`

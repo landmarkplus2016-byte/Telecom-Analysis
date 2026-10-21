@@ -15,6 +15,7 @@ window.POCModule = (function () {
     vfInvoiceNo:   '',
     vfSubmitYear:  '', vfSubmitMonth:  '', vfSubmitDay:  '',
     cashRcvYear:   '', cashRcvMonth:   '', cashRcvDay:   '',
+    contractor:    '',   // narrows results + the contractor invoice list
     ctrInvoiceNos: [],   // multi-select — empty means all
     ctrSubmitYear: '', ctrSubmitMonth: '', ctrSubmitDay: ''
   };
@@ -256,12 +257,25 @@ window.POCModule = (function () {
     });
   }
 
-  /* Contractor invoices offered in the multi-select. Narrowed to the VF invoice
-     only when the user typed it — an auto-filled VF # would hide the other picks. */
+  /* Unique sorted contractor names for the Contractor dropdown */
+  function getContractors(data) {
+    var seen = {};
+    data.forEach(function (r) { var v = String(r.contractor || '').trim(); if (v) seen[v] = 1; });
+    return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  /* Contractor invoices offered in the multi-select: narrowed to the chosen
+     contractor, and to the VF invoice only when the user typed it — an
+     auto-filled VF # would hide the other picks. */
   function ctrInvoiceSource() {
-    var vf = state.vfInvoiceNo.trim();
-    if (!vf || _ctrAutoFilled) return _data;
-    return _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === vf; });
+    var vf  = _ctrAutoFilled ? '' : state.vfInvoiceNo.trim();
+    var ctr = state.contractor;
+    if (!vf && !ctr) return _data;
+    return _data.filter(function (r) {
+      if (vf  && String(r.vfInvoiceNo || '').trim() !== vf)  return false;
+      if (ctr && String(r.contractor  || '').trim() !== ctr) return false;
+      return true;
+    });
   }
 
   function ctrButtonText() {
@@ -364,6 +378,7 @@ window.POCModule = (function () {
       if (state.vfInvoiceNo  && String(r.vfInvoiceNo  || '').trim() !== state.vfInvoiceNo.trim())  return false;
       if (!dateMatchesFilter(r.vfInvoiceSubmissionDate, state.vfSubmitYear,  state.vfSubmitMonth,  state.vfSubmitDay))  return false;
       if (!dateMatchesFilter(r.cashReceivedDate,        state.cashRcvYear,   state.cashRcvMonth,   state.cashRcvDay))   return false;
+      if (state.contractor && String(r.contractor || '').trim() !== state.contractor) return false;
       if (ctrSet && !ctrSet[String(r.ctrInvoiceNo || '').trim()]) return false;
       if (!dateMatchesFilter(r.ctrInvoiceSubmitDate,    state.ctrSubmitYear, state.ctrSubmitMonth, state.ctrSubmitDay)) return false;
       return true;
@@ -458,6 +473,7 @@ window.POCModule = (function () {
     if (state.vfInvoiceNo)                                                 count++;
     if (state.vfSubmitYear  || state.vfSubmitMonth  || state.vfSubmitDay)  count++;
     if (state.cashRcvYear   || state.cashRcvMonth   || state.cashRcvDay)   count++;
+    if (state.contractor)                                                  count++;
     if (state.ctrInvoiceNos.length)                                        count++;
     if (state.ctrSubmitYear || state.ctrSubmitMonth || state.ctrSubmitDay) count++;
     if (count) { badge.textContent = count; badge.style.display = 'inline-flex'; }
@@ -651,6 +667,17 @@ window.POCModule = (function () {
             '</div>' +
           '</div>' +
 
+          /* Contractor — narrows the invoice checklist below to their invoices */
+          '<div class="fin-filter-group">' +
+            '<label class="field-label">Contractor</label>' +
+            '<select id="poc-contractor" class="filter-select" style="width:100%">' +
+              '<option value="">All Contractors</option>' +
+              getContractors(_data).map(function (c) {
+                return '<option value="' + escHtml(c) + '"' + (state.contractor === c ? ' selected' : '') + '>' + escHtml(c) + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+
           '<div class="fin-filter-group">' +
             '<label class="field-label">Contractor Invoice #</label>' +
             '<div class="multi-select" id="poc-ctr-ms">' +
@@ -774,6 +801,18 @@ window.POCModule = (function () {
       renderResults();
     }
 
+    /* Contractor — drop picked invoices that aren't theirs, then refresh */
+    var ctrSel = document.getElementById('poc-contractor');
+    if (ctrSel) ctrSel.addEventListener('change', function (e) {
+      state.contractor = e.target.value;
+      if (state.contractor) {
+        var valid = {};
+        getCtrInvoiceNumbers(ctrInvoiceSource()).forEach(function (v) { valid[v] = 1; });
+        state.ctrInvoiceNos = state.ctrInvoiceNos.filter(function (v) { return valid[v]; });
+      }
+      onCtrSelectionChange();
+    });
+
     var msBox    = document.getElementById('poc-ctr-ms');
     var msBtn    = document.getElementById('poc-ctr-ms-btn');
     var msPanel  = document.getElementById('poc-ctr-ms-panel');
@@ -846,6 +885,7 @@ window.POCModule = (function () {
       state.vfInvoiceNo   = '';
       state.vfSubmitYear  = ''; state.vfSubmitMonth  = ''; state.vfSubmitDay  = '';
       state.cashRcvYear   = ''; state.cashRcvMonth   = ''; state.cashRcvDay   = '';
+      state.contractor    = '';
       state.ctrInvoiceNos = [];
       state.ctrSubmitYear = ''; state.ctrSubmitMonth = ''; state.ctrSubmitDay = '';
       _ctrAutoFilled      = false;
