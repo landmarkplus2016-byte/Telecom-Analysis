@@ -872,3 +872,33 @@ td.col-center { text-align: center; }
 
 /* ── Utility ── */
 .hidden { display: none !important; }
+
+/* ── Multi-select dropdown (TX-RF Contractor Invoice #) ── */
+.multi-select { position: relative; }
+.multi-select-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  background: #fff; color: #1e293b; text-align: left; cursor: pointer;
+}
+.multi-select-btn.empty { color: var(--muted); }
+.multi-select-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-select-caret { flex-shrink: 0; font-size: .75rem; color: var(--muted); }
+.multi-select-panel {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; min-width: 220px; z-index: 50;
+  background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); padding: .5rem;
+}
+.multi-select-actions { display: flex; justify-content: space-between; margin: .4rem 0; }
+.multi-select-actions button {
+  background: none; border: none; cursor: pointer;
+  color: var(--primary); font-size: .78rem; font-weight: 600; padding: .15rem .25rem;
+}
+.multi-select-list { max-height: 240px; overflow-y: auto; }
+.multi-select-option {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .4rem; border-radius: var(--radius-sm);
+  font-size: .85rem; cursor: pointer; user-select: none;
+}
+.multi-select-option:hover { background: #f1f5f9; }
+.multi-select-option.checked { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
+.multi-select-option input { accent-color: var(--primary); width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+.multi-select-empty { font-size: .8rem; color: var(--muted); padding: .4rem; }

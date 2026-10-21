@@ -257,12 +257,13 @@ VF Invoice # · VF Invoice Submission Date · Cash Received Date · **Contractor
 
 **Starts-with match** — the TSR Sub # input uses a dynamically-filtered datalist: on every keystroke the datalist is rebuilt to only show TSR values that **start with** the typed text (case-insensitive). The filter itself also uses `startsWith`, so typing a partial number (e.g. `"12"`) shows all rows whose `tsrSubNo` begins with `"12"`. Selecting a full value from the dropdown narrows to that prefix. `buildTsrDatalistOpts(typed)` handles both the initial render and the live rebuild.
 
-### Contractor Invoice # datalist filtering
+### Contractor Invoice # multi-select (TX-RF and POC)
 
-When a VF Invoice # is active, the Contractor Invoice # datalist shows **only the contractor invoices linked to that VF invoice**. This is enforced in two places:
+In both TX-RF Invoice and POC Invoices, Contractor Invoice # is a **multi-select checklist** (`state.ctrInvoiceNos`, an array; empty = all), not a datalist input. It is a button (`#fin-ctr-ms-btn` / `#poc-ctr-ms-btn`) that opens a panel with a search box, **Select shown** / **Clear** actions, and one checkbox per invoice. Rows pass when their `ctrInvoiceNo` is in the selected set. The options are sorted with a numeric-aware sort (2 before 10). CSS: `.multi-select*` in `styles.css`. The code is duplicated in `financials.js` and `poc.js` with their `fin-` / `poc-` ID prefixes, the same way `syncDateSelects()` is.
 
-1. **`buildFilterHTML()`** — filters `_data` by exact `vfInvoiceNo` match when building the contractor datalist.
-2. **`renderResults()`** — also refreshes the contractor datalist `innerHTML` on every filter change, so the datalist stays in sync.
+- **Option list:** narrowed to the active VF Invoice #, but **only when the user typed that VF #**. `ctrInvoiceSource()` ignores a VF # that was auto-filled from a contractor pick, because otherwise the list would shrink to that one VF invoice and the user could not pick a second one. `refreshCtrMultiSelect()` rebuilds the list from `renderResults()` on every filter change, keeping the search text and scroll position.
+- **Auto-fill:** with exactly **one** pick, the single-invoice auto-fill below still runs, and `_ctrAutoFilled` records that it did. With two or more picks (or none), the auto-filled VF # and dates are cleared, because they belong to a single invoice and would filter out every other pick. Typing in the VF Invoice # input resets `_ctrAutoFilled`.
+- **Closing the panel:** an outside click closes it, via a document listener bound once (`_docClickBound`) that looks up the box fresh each time. Escape also closes it.
 
 ### Auto-fill behavior
 
@@ -273,7 +274,7 @@ Two invoice auto-fill chains exist. Both use `syncDateSelects()` instead of `ren
 - Auto-fills Cash Received Date
 - Filters Contractor Invoice # datalist to only related invoices
 
-**Contractor Invoice # selected (exact match):**
+**Contractor Invoice # selected (exact match; only when exactly one is ticked):**
 - Auto-fills Contractor Invoice Subm Date
 - Auto-fills VF Invoice # (linked from same row) — also updates the VF Invoice # input value in the DOM
 - Auto-fills VF Invoice Submission Date
@@ -569,4 +570,4 @@ All colors and spacing use CSS variables defined in `:root` in `css/styles.css`.
 - `pwa.js` `ensureIcons()` does the same on the client: loads each image, updates the `<link>` tag href if it loads, generates a canvas blob fallback if it fails
 - To use a custom icon: place the PNG files in `assets/` at the correct sizes — both the SW and `ensureIcons()` will automatically prefer them over the generated fallback
 - SW cache is versioned (`CACHE_NAME` in `sw.js`) — **bump the version string whenever cached files change** to force clients to pick up the new SW
-- Current cache version: `telecom-analysis-v16`
+- Current cache version: `telecom-analysis-v18`

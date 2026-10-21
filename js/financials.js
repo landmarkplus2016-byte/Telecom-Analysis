@@ -11,13 +11,15 @@ window.FinancialsModule = (function () {
     vfInvoiceNo:   '',
     vfSubmitYear:  '', vfSubmitMonth:  '', vfSubmitDay:  '',
     cashRcvYear:   '', cashRcvMonth:   '', cashRcvDay:   '',
-    ctrInvoiceNo:  '',
+    ctrInvoiceNos: [],   // multi-select — empty means all
     ctrSubmitYear: '', ctrSubmitMonth: '', ctrSubmitDay: '',
     tsrSubNo:      ''
   };
 
   var _data = []; // module-level data cache
   var _exportInput = ''; // space-separated VF invoice numbers typed by user
+  var _ctrAutoFilled = false; // VF # + dates were filled from a single contractor invoice pick
+  var _docClickBound = false; // outside-click closer for the multi-select, bound once
 
   /* ── Helpers ── */
   function fmt(n) {
@@ -216,25 +218,81 @@ window.FinancialsModule = (function () {
     return Object.keys(seen).sort();
   }
 
-  /* Unique sorted Contractor Invoice numbers for datalist */
+  /* Unique Contractor Invoice numbers, numeric-aware sort (2 before 10) */
   function getCtrInvoiceNumbers(data) {
     var seen = {};
     data.forEach(function (r) {
       var v = String(r.ctrInvoiceNo || '').trim();
       if (v) seen[v] = 1;
     });
-    return Object.keys(seen).sort();
+    return Object.keys(seen).sort(function (a, b) {
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+  }
+
+  /* Contractor invoices offered in the multi-select. Narrowed to the VF invoice
+     only when the user typed it — an auto-filled VF # would hide the other picks. */
+  function ctrInvoiceSource() {
+    var vf = state.vfInvoiceNo.trim();
+    if (!vf || _ctrAutoFilled) return _data;
+    return _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === vf; });
+  }
+
+  function ctrButtonText() {
+    var sel = state.ctrInvoiceNos;
+    if (!sel.length)      return 'All contractor invoices';
+    if (sel.length <= 3)  return sel.join(', ');
+    return sel.length + ' invoices selected';
+  }
+
+  function buildCtrListHTML(search) {
+    var q      = String(search || '').trim().toLowerCase();
+    var chosen = {};
+    state.ctrInvoiceNos.forEach(function (v) { chosen[v] = 1; });
+    var opts = getCtrInvoiceNumbers(ctrInvoiceSource());
+    /* keep picked values visible even if the source list no longer has them */
+    state.ctrInvoiceNos.forEach(function (v) { if (opts.indexOf(v) === -1) opts.push(v); });
+    var html = opts.filter(function (v) {
+      return !q || v.toLowerCase().indexOf(q) !== -1;
+    }).map(function (v) {
+      var on = chosen[v] ? ' checked' : '';
+      return '<label class="multi-select-option' + on + '">' +
+        '<input type="checkbox" value="' + escHtml(v) + '"' + on + '>' +
+        '<span>' + escHtml(v) + '</span>' +
+      '</label>';
+    }).join('');
+    return html || '<p class="multi-select-empty">No matching invoices</p>';
+  }
+
+  /* Rebuild the checkbox list + button text in place (keeps search text and scroll) */
+  function refreshCtrMultiSelect() {
+    var list   = document.getElementById('fin-ctr-ms-list');
+    var search = document.getElementById('fin-ctr-ms-search');
+    if (list) {
+      var top = list.scrollTop;
+      list.innerHTML = buildCtrListHTML(search ? search.value : '');
+      list.scrollTop = top;
+    }
+    var btn   = document.getElementById('fin-ctr-ms-btn');
+    var label = document.getElementById('fin-ctr-ms-label');
+    if (label) label.textContent = ctrButtonText();
+    if (btn)   btn.classList.toggle('empty', !state.ctrInvoiceNos.length);
   }
 
   var MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   /* ── Filter logic (exact match on invoice numbers) ── */
   function applyFilters() {
+    var ctrSet = null;
+    if (state.ctrInvoiceNos.length) {
+      ctrSet = {};
+      state.ctrInvoiceNos.forEach(function (v) { ctrSet[v] = 1; });
+    }
     return _data.filter(function (r) {
       if (state.vfInvoiceNo  && String(r.vfInvoiceNo  || '').trim() !== state.vfInvoiceNo.trim())  return false;
       if (!dateMatchesFilter(r.vfInvoiceSubmissionDate, state.vfSubmitYear,  state.vfSubmitMonth,  state.vfSubmitDay))  return false;
       if (!dateMatchesFilter(r.cashReceivedDate,        state.cashRcvYear,   state.cashRcvMonth,   state.cashRcvDay))   return false;
-      if (state.ctrInvoiceNo && String(r.ctrInvoiceNo || '').trim() !== state.ctrInvoiceNo.trim()) return false;
+      if (ctrSet && !ctrSet[String(r.ctrInvoiceNo || '').trim()]) return false;
       if (!dateMatchesFilter(r.ctrInvoiceSubmitDate,    state.ctrSubmitYear, state.ctrSubmitMonth, state.ctrSubmitDay)) return false;
       if (state.tsrSubNo && !String(r.tsrSubNo || '').trim().toLowerCase().startsWith(state.tsrSubNo.trim().toLowerCase())) return false;
       return true;
@@ -316,16 +374,8 @@ window.FinancialsModule = (function () {
       totC2New += r.c2New;
     });
 
-    /* Also refresh contractor datalist to match current VF invoice filter */
-    var ctrDL = document.getElementById('fin-ctr-invoice-datalist');
-    if (ctrDL) {
-      var ctrSrc = state.vfInvoiceNo
-        ? _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === state.vfInvoiceNo.trim(); })
-        : _data;
-      ctrDL.innerHTML = getCtrInvoiceNumbers(ctrSrc).map(function (v) {
-        return '<option value="' + escHtml(v) + '">';
-      }).join('');
-    }
+    /* Also refresh the contractor invoice list to match current VF invoice filter */
+    refreshCtrMultiSelect();
 
     container.innerHTML =
       /* 3 KPI cards — value shows total, subtitle shows Old / New breakdown */
@@ -574,13 +624,6 @@ window.FinancialsModule = (function () {
       return '<option value="' + escHtml(v) + '">';
     }).join('');
 
-    var ctrDataSource = state.vfInvoiceNo
-      ? _data.filter(function (r) { return String(r.vfInvoiceNo || '').trim() === state.vfInvoiceNo.trim(); })
-      : _data;
-    var ctrInvoiceNums  = getCtrInvoiceNumbers(ctrDataSource);
-    var ctrDatalistOpts = ctrInvoiceNums.map(function (v) {
-      return '<option value="' + escHtml(v) + '">';
-    }).join('');
 
     return (
       /* Mobile toggle header */
@@ -622,11 +665,23 @@ window.FinancialsModule = (function () {
             '</div>' +
           '</div>' +
 
-          /* Contractor Invoice # */
+          /* Contractor Invoice # — multi-select checklist */
           '<div class="fin-filter-group">' +
             '<label class="field-label">Contractor Invoice #</label>' +
-            '<datalist id="fin-ctr-invoice-datalist">' + ctrDatalistOpts + '</datalist>' +
-            '<input type="text" id="fin-ctr-invoice" class="search-input" list="fin-ctr-invoice-datalist" placeholder="Search or select contractor invoice #…" value="' + escHtml(state.ctrInvoiceNo) + '">' +
+            '<div class="multi-select" id="fin-ctr-ms">' +
+              '<button type="button" id="fin-ctr-ms-btn" class="search-input multi-select-btn' + (state.ctrInvoiceNos.length ? '' : ' empty') + '">' +
+                '<span id="fin-ctr-ms-label">' + escHtml(ctrButtonText()) + '</span>' +
+                '<span class="multi-select-caret">&#9662;</span>' +
+              '</button>' +
+              '<div class="multi-select-panel" id="fin-ctr-ms-panel" hidden>' +
+                '<input type="text" id="fin-ctr-ms-search" class="search-input" placeholder="Search invoice #…">' +
+                '<div class="multi-select-actions">' +
+                  '<button type="button" id="fin-ctr-ms-all">Select shown</button>' +
+                  '<button type="button" id="fin-ctr-ms-none">Clear</button>' +
+                '</div>' +
+                '<div class="multi-select-list" id="fin-ctr-ms-list">' + buildCtrListHTML('') + '</div>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
 
           /* Contractor Invoice Subm Date */
@@ -740,7 +795,7 @@ window.FinancialsModule = (function () {
     if (state.vfInvoiceNo)                                                count++;
     if (state.vfSubmitYear  || state.vfSubmitMonth  || state.vfSubmitDay) count++;
     if (state.cashRcvYear   || state.cashRcvMonth   || state.cashRcvDay)  count++;
-    if (state.ctrInvoiceNo)                                               count++;
+    if (state.ctrInvoiceNos.length)                                       count++;
     if (state.ctrSubmitYear || state.ctrSubmitMonth || state.ctrSubmitDay) count++;
     if (state.tsrSubNo)                                                    count++;
     if (count) {
@@ -770,6 +825,7 @@ window.FinancialsModule = (function () {
     var inv = document.getElementById('fin-vf-invoice');
     if (inv) inv.addEventListener('input', function (e) {
       state.vfInvoiceNo = e.target.value;
+      _ctrAutoFilled = false; // the VF # is now the user's own
       if (autoFillDates(state.vfInvoiceNo)) syncDateSelects();
       updateFilterBadge();
       renderResults();
@@ -823,18 +879,78 @@ window.FinancialsModule = (function () {
       updateFilterBadge(); renderResults();
     });
 
-    /* Contractor Invoice # */
-    var ctrInv = document.getElementById('fin-ctr-invoice');
-    if (ctrInv) ctrInv.addEventListener('input', function (e) {
-      state.ctrInvoiceNo = e.target.value;
-      if (autoFillCtrDates(state.ctrInvoiceNo)) {
+    /* Contractor Invoice # — multi-select.
+       One pick auto-fills its VF # and dates (as before). Two or more picks
+       clear those auto-filled values, since they belong to a single invoice
+       and would hide every other pick. */
+    function onCtrSelectionChange() {
+      var sel = state.ctrInvoiceNos;
+      var changed = false;
+      if (sel.length === 1) {
+        if (autoFillCtrDates(sel[0])) { _ctrAutoFilled = true; changed = true; }
+      } else if (_ctrAutoFilled) {
+        state.vfInvoiceNo   = '';
+        state.vfSubmitYear  = ''; state.vfSubmitMonth  = ''; state.vfSubmitDay  = '';
+        state.cashRcvYear   = ''; state.cashRcvMonth   = ''; state.cashRcvDay   = '';
+        state.ctrSubmitYear = ''; state.ctrSubmitMonth = ''; state.ctrSubmitDay = '';
+        _ctrAutoFilled = false;
+        changed = true;
+      }
+      if (changed) {
         var vfEl = document.getElementById('fin-vf-invoice');
         if (vfEl) vfEl.value = state.vfInvoiceNo;
         syncDateSelects();
       }
       updateFilterBadge();
       renderResults();
+    }
+
+    var msBox    = document.getElementById('fin-ctr-ms');
+    var msBtn    = document.getElementById('fin-ctr-ms-btn');
+    var msPanel  = document.getElementById('fin-ctr-ms-panel');
+    var msSearch = document.getElementById('fin-ctr-ms-search');
+    var msList   = document.getElementById('fin-ctr-ms-list');
+
+    if (msBtn && msPanel) msBtn.addEventListener('click', function () {
+      msPanel.hidden = !msPanel.hidden;
+      if (!msPanel.hidden && msSearch) msSearch.focus();
     });
+    if (msBox && msPanel) msBox.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { msPanel.hidden = true; if (msBtn) msBtn.focus(); }
+    });
+    if (msSearch) msSearch.addEventListener('input', refreshCtrMultiSelect);
+
+    if (msList) msList.addEventListener('change', function (e) {
+      var cb = e.target;
+      if (!cb || cb.type !== 'checkbox') return;
+      var v = cb.value;
+      state.ctrInvoiceNos = state.ctrInvoiceNos.filter(function (x) { return x !== v; });
+      if (cb.checked) state.ctrInvoiceNos.push(v);
+      onCtrSelectionChange();
+    });
+
+    var msAll = document.getElementById('fin-ctr-ms-all');
+    if (msAll && msList) msAll.addEventListener('click', function () {
+      msList.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+        if (state.ctrInvoiceNos.indexOf(cb.value) === -1) state.ctrInvoiceNos.push(cb.value);
+      });
+      onCtrSelectionChange();
+    });
+    var msNone = document.getElementById('fin-ctr-ms-none');
+    if (msNone) msNone.addEventListener('click', function () {
+      state.ctrInvoiceNos = [];
+      onCtrSelectionChange();
+    });
+
+    /* Close the panel on any click outside it — bound once, looks the box up fresh */
+    if (!_docClickBound) {
+      _docClickBound = true;
+      document.addEventListener('click', function (e) {
+        var box   = document.getElementById('fin-ctr-ms');
+        var panel = document.getElementById('fin-ctr-ms-panel');
+        if (box && panel && !panel.hidden && !box.contains(e.target)) panel.hidden = true;
+      });
+    }
 
     /* Contractor Invoice Subm Date */
     var csYear  = document.getElementById('fin-cs-year');
@@ -876,9 +992,10 @@ window.FinancialsModule = (function () {
       state.vfInvoiceNo   = '';
       state.vfSubmitYear  = ''; state.vfSubmitMonth  = ''; state.vfSubmitDay  = '';
       state.cashRcvYear   = ''; state.cashRcvMonth   = ''; state.cashRcvDay   = '';
-      state.ctrInvoiceNo  = '';
+      state.ctrInvoiceNos = [];
       state.ctrSubmitYear = ''; state.ctrSubmitMonth = ''; state.ctrSubmitDay = '';
       state.tsrSubNo      = '';
+      _ctrAutoFilled      = false;
       render();
     });
   }
